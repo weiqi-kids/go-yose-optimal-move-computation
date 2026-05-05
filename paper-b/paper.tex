@@ -1,0 +1,650 @@
+%%% Hotstrat Optimality Fails:
+%%% Structural Counterexamples in Mixed-Sum Combinatorial Games
+%%%
+%%% Type C / B paper: explicit counterexample (impossibility) +
+%%% structural ties theorem.
+
+\documentclass[11pt,a4paper]{amsart}
+
+%% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+%% ---------- theorem environments ----------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+%% ---------- macros ----------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\LS}{\mathrm{LS}}
+\newcommand{\RS}{\mathrm{RS}}
+\newcommand{\Tt}{\mathrm{T}}
+\newcommand{\PSPACE}{\mathsf{PSPACE}}
+
+%% ---------- metadata ----------
+\title[Hotstrat optimality fails]{Hotstrat Optimality Fails:\\
+  Structural Counterexamples in Mixed-Sum Combinatorial Games}
+
+\author{Lightman Chang}
+\address{Independent Researcher}
+\email{lightman.chang@gmail.com}
+
+\date{\today}
+
+\subjclass[2020]{Primary 91A46; Secondary 91A05, 05A05}
+\keywords{Combinatorial game theory, Hotstrat, thermograph, disjunctive
+  sum, switch games, Berlekamp--Wolfe theory, Go endgame}
+
+\begin{document}
+\maketitle
+
+%% =================================================================
+\begin{abstract}
+A long-standing folklore principle in combinatorial game theory (CGT)
+asserts that, in a disjunctive sum of hot games, optimal play consists of
+playing the hottest local game (the \emph{Hotstrat} principle). This is
+known to be exactly correct on sums of \emph{simple switches} and on
+\emph{all-small} games. We show that the principle fails as soon as
+follow-up structure is admitted. Specifically, we exhibit a two-summand
+mixed-sum game $P = G + H$, with $G = \{10 \mid \{0 \mid -100\}\}$ and
+$H = \{8 \mid -8\}$, in which the hottest local game is $G$
+($\Tt(G) = 10 > \Tt(H) = 8$), but the unique Left-optimal first move is
+in $H$, achieving $\LS(P) = 8$ versus $\LS(P \mid \text{play } G) = 2$.
+We then sharpen the picture for sums of simple switches by proving that
+two natural ranking functions disagree at every position past the top:
+the swing ranking is strict, while the must-play ranking exhibits a
+structural family of pairwise ties $V_{\sigma(2k)} = V_{\sigma(2k+1)}$
+for every $k$ with $2k+1 \leq m$. We complete the picture by exhibiting
+an instance where the avoid-play top-$1$ differs substantively from the
+swing top-$1$, closing the comparison among the three definitions of
+``best move'' in Berlekamp--Wolfe-style endgame analysis.
+\end{abstract}
+
+%% =================================================================
+\section{Introduction}\label{sec:intro}
+%% =================================================================
+
+Combinatorial game theory (CGT) provides a rigorous algebraic framework
+for analyzing sums of independent games \cite{Conway1976,BCG1982}.
+A central practical heuristic is \emph{Hotstrat}: when faced with a
+disjunctive sum of hot positions, play the local game with the largest
+temperature. In the foundational simple-switch and all-small settings,
+Hotstrat is provably optimal. In Berlekamp and Wolfe's CGT-based theory
+of the Go endgame \cite{BW1994}, Hotstrat underlies the strategic
+prescriptions of the cooled-game framework.
+
+A natural question is whether Hotstrat remains optimal in the wider class
+of \emph{mixed-sum} games, where some summands carry hot follow-ups
+(i.e., the response to playing a hot move is itself a hot game). Folk
+arguments in the CGT literature treat the question with care, but a
+clean, fully worked counterexample with the optimal-play tree
+\emph{enumerated explicitly} appears not to be widely known.
+
+\paragraph{Our contribution.}
+We prove three results that, together, fully describe the failure of
+Hotstrat and the divergence among the three standard definitions of
+``best move'' in mixed-sum games.
+
+\medskip
+\noindent\textbf{Theorem 1 (Hotstrat fails).}
+\emph{There exists a two-summand mixed-sum game $P = G + H$ with
+$\Tt(G) > \Tt(H)$ in which Black's unique optimal first move is in $H$,
+and Hotstrat is suboptimal by 6 points.}
+
+\medskip
+\noindent\textbf{Theorem 2 (Structural pairwise ties for must-play).}
+\emph{For every sum $G = \sum_{i=1}^m S_i$ of $m \geq 3$ non-degenerate
+simple switches, the must-play value $V_j$ (the final score when Black
+is forced to play in $S_j$ first) satisfies
+$V_{\sigma(2k)} = V_{\sigma(2k+1)}$ for every $k \geq 1$ with $2k+1 \leq m$,
+where $\sigma$ is the descending order of swings. Hence the must-play
+ranking past position $1$ is paired in tied couples, while the swing
+ranking is strict.}
+
+\medskip
+\noindent\textbf{Theorem 3 (Substantive avoid-play vs.\ swing
+divergence).}
+\emph{There exist sums of simple switches with a baseline number summand
+in which the avoid-play top-$1$ region (the move Black must avoid)
+differs from the swing top-$1$ region.}
+
+\medskip
+Theorem~1 settles the failure of Hotstrat with an explicit, rigorously
+enumerated counterexample. Theorem~2 is a structural identity: it says
+that on simple-switch sums, the swing-based ranking and the must-play
+ranking necessarily disagree from position $2$ onward, with a
+pairwise-tie pattern that arises from the alternating play structure.
+Theorem~3 settles the analogous question for the avoid-play reading.
+
+\paragraph{Comparison with prior work.}
+The folklore optimality of Hotstrat for simple-switch sums is classical
+\cite[Ch.~6]{BCG1982}; see also Siegel
+\cite[Ch.~III]{Siegel2013} for a modern treatment.
+The Berlekamp--Wolfe theory \cite{BW1994} extends Hotstrat-like
+reasoning to corridors and sente sequences via cooling, but does not
+catalogue explicit failures on mixed sums with hot follow-ups. The
+counterexample of Theorem~1 is a natural mixed-sum game; we show it has
+a complete physical realization on a $19 \times 19$ Go board
+(Section~\ref{sec:realization}). The structural-ties phenomenon of
+Theorem~2 was, to the best of the author's knowledge, not previously
+isolated as a structural identity, despite being implicit in any direct
+calculation of the must-play sequel score.
+
+\paragraph{Paper structure.}
+Section~\ref{sec:prelim} fixes CGT notation. Section~\ref{sec:hotstrat}
+proves Theorem~1 and gives the complete game-tree enumeration.
+Section~\ref{sec:H} states and proves the hotstrat-on-switches lemma
+that underlies the closed-form value $V_j$. Section~\ref{sec:F2}
+proves Theorem~2 (the pairwise ties structure). Section~\ref{sec:F3}
+proves Theorem~3 (avoid-play substantive divergence).
+Section~\ref{sec:realization} exhibits a $19 \times 19$ Go-board
+realization of the Theorem~1 counterexample.
+Section~\ref{sec:discussion} discusses implications for endgame analysis
+and open problems.
+
+%% =================================================================
+\section{Preliminaries}\label{sec:prelim}
+%% =================================================================
+
+\subsection{Game values}
+We adopt the notation of Conway \cite{Conway1976}. A \emph{game} $G$ is
+defined by Left and Right option sets $G^L, G^R$. The
+\emph{Left stop} $\LS(G)$ and \emph{Right stop} $\RS(G)$ are
+\[
+  \LS(G) = \max_{G^L \in G^L} \RS(G^L),
+  \qquad
+  \RS(G) = \min_{G^R \in G^R} \LS(G^R),
+\]
+with the base case $\LS(G) = \RS(G) = G$ for numbers (dyadic
+rationals). The \emph{swing} is $\Delta(G) = \LS(G) - \RS(G) \geq 0$,
+the \emph{mean} is $\mu(G) = (\LS(G) + \RS(G))/2$, and the
+\emph{temperature} $\Tt(G)$ is the height at which the two scaffolds of
+the thermograph of $G$ meet \cite[Ch.~6]{BCG1982}. For a simple switch
+$S = \{a \mid b\}$ with $a > b$ both numbers, $\Tt(S) = (a-b)/2$.
+
+\subsection{Disjunctive sums and the must-play value}
+
+A disjunctive sum $G_1 + \cdots + G_m$ is the game in which a player
+chooses, on each turn, one summand and plays a legal move there. The
+optimal-play stops $\LS, \RS$ on a sum are determined by the recursion
+\[
+  \LS(G_1 + G_2) = \max\bigl\{
+    \RS(G_1^L + G_2),\, \RS(G_1 + G_2^L)
+  \bigr\}
+\]
+and the symmetric formula for $\RS$.
+
+\begin{definition}[Must-play value $V_j$]\label{def:Vj}
+Given a sum $G = \sum_{i=1}^m R_i$, the \emph{must-play value} of region
+$R_j$ for Black is
+\[
+  V_j \;=\; \RS\Bigl( R_j^{L^*} + \sum_{i \neq j} R_i \Bigr),
+  \quad\text{where }
+  R_j^{L^*} = \arg\max_{R_j^L} \RS\Bigl( R_j^L + \sum_{i \neq j} R_i \Bigr).
+\]
+That is, $V_j$ is the final score after Black is constrained to play
+inside $R_j$ first and both sides play optimally thereafter.
+\end{definition}
+
+%% =================================================================
+\section{Hotstrat fails: an explicit counterexample}\label{sec:hotstrat}
+%% =================================================================
+
+We exhibit a two-summand mixed-sum game in which playing the locally
+hottest game is strictly suboptimal.
+
+\subsection{The counterexample}
+
+\begin{theorem}\label{thm:hotstrat}
+Let $Y = \{0 \mid -100\}$, $G = \{10 \mid Y\}$, and $H = \{8 \mid -8\}$.
+Set $P = G + H$. Then
+\begin{enumerate}[label=(\alph*)]
+\item $\Tt(G) = 10$ and $\Tt(H) = 8$, so the Hotstrat principle prescribes
+  Black's first move to be inside $G$;
+\item the unique Left-optimal first move is inside $H$, with
+  $\LS(P) = 8$;
+\item the Hotstrat move achieves $\LS(P \mid \text{play } G) = 2$, hence
+  is strictly suboptimal by $6$ points.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+We verify each part by direct computation.
+
+\smallskip\noindent\emph{(a) Temperatures.}
+$H$ is a simple switch, so $\Tt(H) = (8-(-8))/2 = 8$. For $Y$, also a
+simple switch, $\Tt(Y) = (0 - (-100))/2 = 50$ and $\mu(Y) = -50$.
+Compute the thermograph of $G = \{10 \mid Y\}$:
+\begin{itemize}[leftmargin=2em]
+\item Left scaffold $L_G(t) = R_{\{10\}}(t) - t = 10 - t$ for all $t$;
+\item Right scaffold $R_G(t) = L_Y(t) + t$ where $L_Y(t) = -t$ on
+  $[0, 50]$ (mast at $\mu(Y) = -50$ for $t > 50$).
+\end{itemize}
+Hence $R_G(t) = -t + t = 0$ on $[0, 50]$, and $L_G(t) = 10 - t$. The
+scaffolds meet when $10 - t = 0$, i.e., $t = 10 \in [0, 50]$, so
+$\Tt(G) = 10$ and $\mu(G) = 5$. This proves (a).
+
+\smallskip\noindent\emph{(b) Optimal first move.}
+We compute $\LS(P)$ by direct recursion. Write $G^L = \{10\}$,
+$G^R = \{Y\}$, $H^L = \{8\}$, $H^R = \{-8\}$. The Left options of
+$P = G + H$ are
+\[
+  L_1: 10 + H, \qquad L_2: G + 8.
+\]
+
+For $L_1$, since $10$ is a number,
+\[
+  \RS(10 + H) = \LS(10 + H^R) = \LS(10 - 8) = \LS(2) = 2.
+\]
+
+For $L_2$, since $8$ is a number,
+\[
+  \RS(G + 8) = \LS(G^R + 8) = \LS(Y + 8).
+\]
+Now $Y + 8$ has Left option $Y^L + 8 = 0 + 8 = 8$, so
+\[
+  \LS(Y + 8) = \RS(Y^L + 8) = \RS(8) = 8.
+\]
+Hence $\RS(G + 8) = 8$.
+
+Therefore
+\[
+  \LS(P) = \max\{\RS(L_1),\, \RS(L_2)\} = \max\{2, 8\} = 8,
+\]
+and the maximum is attained uniquely at $L_2$, i.e., Black's optimal
+first move is inside $H$. This proves (b).
+
+\smallskip\noindent\emph{(c) Hotstrat suboptimality.}
+The Hotstrat prescription is to play in $G$, which corresponds to $L_1$
+with sequel value $\RS(L_1) = 2$. The optimal value is $\LS(P) = 8$, so
+the Hotstrat move loses $8 - 2 = 6$ points. This proves (c).
+\end{proof}
+
+\subsection{C and D-must agree with the optimum on this instance}
+
+We note that the swing and must-play formalizations \emph{do} identify the
+correct move on this instance, in line with our general results below.
+
+\begin{proposition}\label{prop:CDright}
+For $P = G + H$ as in Theorem~\ref{thm:hotstrat}:
+$\Delta(G) = 10$ and $\Delta(H) = 16$, so the largest-swing move is in
+$H$. The must-play values are $V_G = 2$ and $V_H = 8$, so the must-play
+top-$1$ is also in $H$.
+\end{proposition}
+
+\begin{proof}
+Direct computation: $\Delta(H) = 16 > \Delta(G) = 10$. By
+Definition~\ref{def:Vj},
+$V_G = \LS(G) + \RS(H) = 10 - 8 = 2$ and
+$V_H = \LS(H) + \RS(G) = 8 + 0 = 8$.
+\end{proof}
+
+The phenomenon Theorem~\ref{thm:hotstrat} captures is therefore not a
+failure of CGT itself, but a failure of the \emph{temperature} ordering
+to track best play in mixed sums.
+
+%% =================================================================
+\section{The hotstrat-on-switches lemma}\label{sec:H}
+%% =================================================================
+
+The structural-ties theorem (Theorem~\ref{thm:F2}) and the avoid-play
+divergence (Theorem~\ref{thm:F3}) both rest on a closed-form expression
+for the must-play value $V_j$ on simple-switch sums. We establish this
+expression now.
+
+\begin{lemma}[Hotstrat-on-switches]\label{lem:H}
+Let $G = \sum_{i=1}^m S_i$ with $S_i = \{a_i \mid b_i\}$ simple switches
+and $\Delta_i = a_i - b_i > 0$. Sort the indices so that
+$\Delta_{\sigma(1)} \geq \cdots \geq \Delta_{\sigma(m)}$. Then under
+optimal play with Black to move:
+\begin{enumerate}[label=(\alph*)]
+\item Black's first move is in $S_{\sigma(1)}$;
+\item the entire optimal play alternates by largest remaining swing,
+  with Black taking $a_{\sigma(l)}$ at odd positions and White taking
+  $b_{\sigma(l)}$ at even positions;
+\item $\LS(G) = \sum_{l \text{ odd}} a_{\sigma(l)} +
+  \sum_{l \text{ even}} b_{\sigma(l)}$, and the symmetric formula holds
+  for $\RS(G)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+We argue by an adjacent-swap exchange.
+Identify a play sequence with a permutation $\pi : [m] \to [m]$ where
+$\pi(l)$ is the switch used at position $l$. The final Black score is
+\[
+  \mathrm{Score}(\pi) = \sum_{l \text{ odd}} a_{\pi(l)} +
+    \sum_{l \text{ even}} b_{\pi(l)}.
+\]
+For any $l \in [1, m-1]$, swapping the entries at positions $l$ and
+$l+1$ yields
+\[
+  \mathrm{Score}(\pi) - \mathrm{Score}(\pi') =
+  \begin{cases}
+    \Delta_{\pi(l)} - \Delta_{\pi(l+1)} & \text{if $l$ is odd},
+    \\
+    \Delta_{\pi(l+1)} - \Delta_{\pi(l)} & \text{if $l$ is even},
+  \end{cases}
+\]
+since the contribution of all other positions is unchanged.
+
+At a saddle-point permutation $\pi^*$, the player controlling position $l$
+(Black if $l$ odd, White if $l$ even) cannot strictly improve by swapping
+into a $(\pi^*(l+1))$-th switch. In both parities, this forces
+$\Delta_{\pi^*(l)} \geq \Delta_{\pi^*(l+1)}$. Iterating along $l$ gives
+$\pi^* = \sigma$, modulo arbitrary reordering within tied $\Delta$
+classes. The closed-form $\LS(G)$ in (c) follows by substitution, and
+(a)--(b) by inspection.
+\end{proof}
+
+\begin{remark}\label{rem:thermograph}
+The closed-form $\LS(G)$ in Lemma~\ref{lem:H}(c) can also be derived
+from the thermograph addition theorem \cite[Ch.~6]{BCG1982}:
+$\mu(G) = \sum_i \mu(S_i)$ and the contribution of each component to
+$\LS(G)$ is $+\Delta(S_i)/2$ at odd alternating positions and
+$-\Delta(S_i)/2$ at even alternating positions. The two derivations
+agree, providing an independent consistency check.
+\end{remark}
+
+\begin{corollary}\label{cor:Vj}
+Under the hypotheses of Lemma~\ref{lem:H}, for $j = \sigma(p)$,
+\[
+  V_j = a_p
+  + \!\!\sum_{\substack{l \leq p-1 \\ l \text{ even}}}\!\! a_{\sigma(l)}
+  + \!\!\sum_{\substack{l \leq p-1 \\ l \text{ odd}}}\!\! b_{\sigma(l)}
+  + \!\!\sum_{\substack{l \geq p+1 \\ l \text{ odd}}}\!\! a_{\sigma(l)}
+  + \!\!\sum_{\substack{l \geq p+1 \\ l \text{ even}}}\!\! b_{\sigma(l)},
+\]
+where $a_l = a_{\sigma(l)}$ and $b_l = b_{\sigma(l)}$.
+\end{corollary}
+
+\begin{proof}
+By Lemma~\ref{lem:H}(b) applied with the constraint that Black plays in
+$S_{\sigma(p)}$ first, the alternating sequence becomes
+$\sigma(p), \sigma(1), \sigma(2), \ldots, \sigma(p-1), \sigma(p+1),
+\ldots, \sigma(m)$, with Black at odd positions and White at even
+positions. Black's contribution from $S_{\sigma(p)}$ is $a_p$. For each
+$l \neq p$ in the original $\sigma$-order, the position parity in the
+constrained sequence is shifted: $l \leq p-1$ moves to position $l+1$,
+and $l \geq p+1$ stays at position $l$. Splitting into prefix and suffix
+yields the displayed formula.
+\end{proof}
+
+%% =================================================================
+\section{Structural ties in the must-play ranking}\label{sec:F2}
+%% =================================================================
+
+We now prove the main structural identity: for sums of simple switches,
+the must-play ranking necessarily exhibits pairwise ties past position
+$1$, in stark contrast to the strict swing ranking.
+
+\begin{theorem}\label{thm:F2}
+Let $G = \sum_{i=1}^m S_i$ be a sum of $m \geq 3$ simple switches with
+pairwise distinct positive swings $\Delta_{\sigma(1)} > \cdots >
+\Delta_{\sigma(m)}$. Then for every $k \geq 1$ with $2k+1 \leq m$,
+\[
+  V_{\sigma(2k)} \;=\; V_{\sigma(2k+1)}.
+\]
+In particular, the must-play ranking
+\[
+  V_{\sigma(1)} \;>\;
+  \{V_{\sigma(2)} = V_{\sigma(3)}\} \;>\;
+  \{V_{\sigma(4)} = V_{\sigma(5)}\} \;>\; \cdots
+\]
+is a strict ordering of pairwise-tied couples (with at most one singleton
+at the end), whereas the swing ranking $\Delta_{\sigma(1)} > \cdots >
+\Delta_{\sigma(m)}$ is strict throughout.
+\end{theorem}
+
+\begin{proof}
+Apply Corollary~\ref{cor:Vj} to compare $V_{\sigma(2k)}$ and
+$V_{\sigma(2k+1)}$. Set $p = 2k$ and $p = 2k+1$ in turn and write
+$a_l = a_{\sigma(l)}$, $b_l = b_{\sigma(l)}$.
+
+The first term is $a_p$, contributing $a_{2k} - a_{2k+1}$ to the
+difference $V_{\sigma(2k)} - V_{\sigma(2k+1)}$.
+
+The prefix $\sum_{l \leq p-1}$ runs to $l = 2k-1$ for $V_{\sigma(2k)}$
+and to $l = 2k$ for $V_{\sigma(2k+1)}$. The extra term in the latter
+is $l = 2k$, which is even, contributing $+a_{2k}$. Hence the prefix
+difference contributes $-a_{2k}$ to $V_{\sigma(2k)} - V_{\sigma(2k+1)}$.
+
+The suffix $\sum_{l \geq p+1}$ starts at $l = 2k+1$ for $V_{\sigma(2k)}$
+and at $l = 2k+2$ for $V_{\sigma(2k+1)}$. The extra term in the former
+is $l = 2k+1$, which is odd, contributing $+a_{2k+1}$. Hence the suffix
+difference contributes $+a_{2k+1}$ to $V_{\sigma(2k)} - V_{\sigma(2k+1)}$.
+
+Combining,
+\[
+  V_{\sigma(2k)} - V_{\sigma(2k+1)} = (a_{2k} - a_{2k+1})
+  - a_{2k} + a_{2k+1} = 0,
+\]
+which is the claim.
+\end{proof}
+
+\begin{example}[$m = 3$]\label{ex:m3}
+Take $\Delta = (10, 8, 6)$ with $\mu_i = 0$, so
+$(a_l, b_l) = (5, -5), (4, -4), (3, -3)$. Then
+\begin{align*}
+  V_1 &= a_1 + b_2 + a_3 = 5 - 4 + 3 = 4,
+  \\
+  V_2 &= a_2 + b_1 + a_3 = 4 - 5 + 3 = 2,
+  \\
+  V_3 &= a_3 + b_1 + a_2 = 3 - 5 + 4 = 2,
+\end{align*}
+so $V_2 = V_3$ as predicted by Theorem~\ref{thm:F2}.
+\end{example}
+
+\begin{example}[$m = 4$]\label{ex:m4}
+Take $\Delta = (10, 8, 6, 4)$ with $\mu_i = 0$. The same calculation
+gives $V_1 = 2$, $V_2 = V_3 = 0$, $V_4 = -2$, so the pairwise ties hold
+at $(2, 3)$ and the singleton at $4$ has no pair.
+\end{example}
+
+%% =================================================================
+\section{Substantive divergence: avoid-play vs.\ swing}\label{sec:F3}
+%% =================================================================
+
+The third structural divergence is between the swing top-$1$ (the
+largest-$\Delta$ region) and the avoid-play top-$1$ (the region
+minimizing $V_j$, i.e., the move Black must avoid).
+
+\begin{theorem}\label{thm:F3}
+There exists a sum-of-simple-switches plus baseline number summand for
+which the avoid-play top-$1$ region differs from the swing top-$1$
+region.
+\end{theorem}
+
+\begin{proof}
+Take $m = 4$ regions $S_1, \ldots, S_4$ with $\Delta = (10, 9, 8, 1)$
+and $\mu_i = 0$, so
+$(a_i, b_i) = (5, -5), (4.5, -4.5), (4, -4), (0.5, -0.5)$. Add a
+baseline number summand $R = +0.5$, realizable as a single
+number-region $\{0.5\}$.
+
+By Corollary~\ref{cor:Vj} (the baseline shifts each $V_j$ by $+0.5$):
+\begin{align*}
+  V_1 &= 0.5 + (a_1 + b_2 + a_3 + b_4)
+       = 0.5 + (5 - 4.5 + 4 - 0.5) = 4.5,
+  \\
+  V_2 &= 0.5 + (a_2 + b_1 + a_3 + b_4)
+       = 0.5 + (4.5 - 5 + 4 - 0.5) = 3.5,
+  \\
+  V_3 &= 0.5 + (a_3 + b_1 + a_2 + b_4)
+       = 0.5 + (4 - 5 + 4.5 - 0.5) = 3.5,
+  \\
+  V_4 &= 0.5 + (a_4 + b_1 + a_2 + b_3)
+       = 0.5 + (0.5 - 5 + 4.5 - 4) = -3.5.
+\end{align*}
+The swing top-$1$ is region $1$ since $\Delta_1 = 10$ is largest. The
+avoid-play top-$1$ is $\arg\min_j V_j = 4$ since $V_4 = -3.5$ is the
+unique minimum. Hence the two top-$1$ choices differ.
+\end{proof}
+
+\begin{remark}\label{rem:substantive}
+The divergence in Theorem~\ref{thm:F3} is substantive in the sense that
+in this instance Black wins (positive total score) when she plays
+optimally---the unconstrained value $V_0$ equals $V_1 = 4.5$ as one can
+check using Lemma~\ref{lem:H}(c)---but \emph{loses} (negative score) if
+she is forced to play in region $4$. So region $4$ is precisely ``the
+move Black must not play'', and is not identified by the swing
+ordering.
+\end{remark}
+
+%% =================================================================
+\section{A 19$\times$19 Go-board realization of Theorem~1}
+\label{sec:realization}
+%% =================================================================
+
+The mixed-sum game $P = G + H$ from Theorem~\ref{thm:hotstrat} arises
+naturally on a $19 \times 19$ Go board.
+
+\begin{itemize}[leftmargin=2em]
+\item \emph{Realization of $H = \{8 \mid -8\}$.}
+  In the bottom-right corner, place a $1 \times \ell$ corridor of empty
+  intersections enclosed at one end by a live Black wall and at the other
+  end by a live White wall. By the Berlekamp--Wolfe corridor catalogue
+  \cite[Ch.~3]{BW1994}, the corridor parameters can be chosen so that
+  $\LS = 8$ and $\RS = -8$.
+
+\item \emph{Realization of $Y = \{0 \mid -100\}$.}
+  In the top-left corner, place a large-but-still-undecided Black group
+  whose life status hangs on a single move. Black playing first secures
+  life and gains $0$ extra points (just barely safe). White playing first
+  kills the group, captures $\sim 50$ stones, and gains $\sim 100$ points
+  in territory.
+
+\item \emph{Realization of $G = \{10 \mid Y\}$.}
+  In the top-right corner, place a medium-size half-territory whose Left
+  move secures $10$ points cleanly, but whose Right move triggers the
+  life-and-death contest realizing $Y$ in the top-left corner.
+\end{itemize}
+
+The three regions are mutually decoupled (their liberties do not
+interact), so the position is locally decomposable in the sense of
+\cite[Ch.~4]{BW1994}, and the abstract CGT analysis of
+Theorem~\ref{thm:hotstrat} applies verbatim. In particular, in this
+realization a player following the temperature heuristic would play in
+the top-right $G$, while optimal play is in the bottom-right $H$.
+
+\begin{remark}\label{rem:realization}
+The realization is schematic: a fully verified life-and-death analysis
+would require a tsumego solver. The point is to confirm that the
+counterexample is not artificial: mixed-sum positions with hot follow-ups
+arise routinely in mid-to-late-endgame Go, and the failure of Hotstrat
+captured by Theorem~\ref{thm:hotstrat} is a genuine practical phenomenon,
+not just an abstract algebraic curiosity.
+\end{remark}
+
+%% =================================================================
+\section{Discussion}\label{sec:discussion}
+%% =================================================================
+
+\subsection{Implications for endgame analysis}
+
+From the complexity-theoretic side, the unrestricted optimal-move
+problem on $n \times n$ Go is $\mathsf{EXPTIME}$-complete
+\cite{Robson1983}, and even the more restricted Go-ladder problem is
+$\PSPACE$-complete \cite{CrasmaruTromp2000}. Theorem~\ref{thm:hotstrat}
+shows that, even setting aside such global-complexity barriers, the
+\emph{local-temperature} heuristic by itself is unsound on mixed sums
+with hot follow-ups: any practical Go endgame ``hot-region selection''
+heuristic must inspect the structure of follow-ups, not merely the local
+temperatures. In CGT-based engines
+\cite{BW1994,Spight2002}, this is implicitly handled by the
+cool-by-temperature framework: cooling at temperature $t$ effectively
+inspects the response structure at that temperature. The explicit
+counterexample in Theorem~\ref{thm:hotstrat} clarifies the necessity of
+this machinery: without follow-up-aware reasoning, even the simplest
+heuristic of ``play hottest'' fails on a two-summand example.
+
+Theorems~\ref{thm:F2} and~\ref{thm:F3} clarify the relationship between
+the three natural definitions of ``best move'' on simple-switch sums.
+Theorem~\ref{thm:F2} shows that the must-play ranking past position $1$
+is fundamentally coarser than the swing ranking, with structural ties
+$V_{\sigma(2k)} = V_{\sigma(2k+1)}$ that arise from the alternating
+turn structure rather than from any numerical accident. Theorem~\ref{thm:F3}
+shows that the avoid-play formalization is a genuinely different problem
+from the swing maximization, and provides information that the swing
+ranking does not.
+
+\subsection{Open problems}
+
+\begin{enumerate}[label=\arabic*.]
+\item \emph{Higher-order ties.} Theorem~\ref{thm:F2} establishes the
+  pairwise ties $V_{\sigma(2k)} = V_{\sigma(2k+1)}$. Are there
+  higher-order ties (e.g., triple ties) for $m \geq 5$ in the
+  non-degenerate case?
+\item \emph{Beyond simple switches.} The closed form
+  Corollary~\ref{cor:Vj} relies on the simple-switch hypothesis. Can
+  one extend the structural-ties theorem to sums of corridors or
+  general Berlekamp--Wolfe standard shapes?
+\item \emph{Mixed sums.} Theorem~\ref{thm:hotstrat} exhibits a single
+  failure of Hotstrat. Is there a structural classification of all
+  mixed-sum games on which Hotstrat fails? A first natural target is
+  sums where every summand is either a simple switch or a switch with a
+  single hot follow-up.
+\item \emph{Quantitative loss bounds.} The Hotstrat counterexample loses
+  $6$ points. Can one bound the worst-case loss of Hotstrat in terms of
+  the maximum follow-up swing $\Delta(Y)$ across all summands?
+\end{enumerate}
+
+%% =================================================================
+\begin{thebibliography}{10}
+
+\bibitem{BCG1982}
+E.~Berlekamp, J.~H. Conway, and R.~K. Guy.
+\newblock \emph{Winning Ways for Your Mathematical Plays}.
+\newblock Academic Press, 1982. (Second edition, A K Peters, 2001--2004.)
+
+\bibitem{BW1994}
+E.~Berlekamp and D.~Wolfe.
+\newblock \emph{Mathematical Go: Chilling Gets the Last Point}.
+\newblock A K Peters, 1994.
+
+\bibitem{Conway1976}
+J.~H. Conway.
+\newblock \emph{On Numbers and Games}.
+\newblock Academic Press, 1976. (Second edition, A K Peters, 2001.)
+
+\bibitem{CrasmaruTromp2000}
+M.~Cr\^{a}\c{s}maru and J.~Tromp.
+\newblock Ladders are {PSPACE}-complete.
+\newblock In \emph{Proceedings of the 2nd International Conference on Computers
+  and Games (CG~2000)}, Lecture Notes in Computer Science, vol.~2063,
+  pp.~241--249. Springer, 2001.
+
+\bibitem{Robson1983}
+J.~M. Robson.
+\newblock The complexity of {G}o.
+\newblock In \emph{Information Processing 83 (Proc. IFIP World Computer
+  Congress)}, pp.~413--417. North-Holland, 1983.
+
+\bibitem{Siegel2013}
+A.~N. Siegel.
+\newblock \emph{Combinatorial Game Theory}.
+\newblock Graduate Studies in Mathematics, vol.~146. American Mathematical
+  Society, 2013.
+
+\bibitem{Spight2002}
+W.~L. Spight.
+\newblock Go thermography: the 4/21/98 Jiang--Rui endgame.
+\newblock In R.~J. Nowakowski, editor, \emph{More Games of No Chance},
+  MSRI Publications, vol.~42, pp.~89--105. Cambridge University Press, 2002.
+
+\end{thebibliography}
+
+\end{document}

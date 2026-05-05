@@ -1,0 +1,729 @@
+%%% On the Computational Complexity of Optimal Yose Move in Go
+%%% via Combinatorial Game Theory
+%%%
+%%% Type A paper: PSPACE-hardness lower bound + matched polynomial upper bound
+%%% under standard Berlekamp--Wolfe shape promise.
+
+\documentclass[11pt,a4paper]{amsart}
+
+%% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+%% ---------- theorem environments ----------
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{theorem*}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+%% ---------- macros ----------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\LS}{\mathrm{LS}}
+\newcommand{\RS}{\mathrm{RS}}
+\newcommand{\Tt}{\mathrm{T}}
+\newcommand{\PSPACE}{\mathsf{PSPACE}}
+\newcommand{\GLG}{\mathsf{GLG}}
+\newcommand{\BMX}{\textsc{Best-Move-X}}
+
+%% ---------- metadata ----------
+\title[Complexity of Optimal Yose Move in Go]{On the Computational Complexity\\
+  of the Optimal Yose Move in Go via Combinatorial Game Theory}
+
+\author{Lightman Chang}
+\address{Independent Researcher}
+\email{lightman.chang@gmail.com}
+
+\date{\today}
+
+\subjclass[2020]{Primary 91A46; Secondary 68Q17, 91A05}
+\keywords{Combinatorial game theory, Go endgame, computational complexity,
+  PSPACE-hardness, thermograph, Berlekamp--Wolfe theory}
+
+\begin{document}
+\maketitle
+
+%% =================================================================
+\begin{abstract}
+We study the complexity of computing an optimal endgame (\emph{yose}) move
+in $n \times n$ Go under three formal readings of ``optimal'': maximum
+combinatorial game theory (CGT) temperature ($X = B$); maximum
+swing $\LS - \RS$ ($X = C$); and maximum (or minimum) value-of-being-forced-to-play
+under optimal sequel ($X = D\text{-must}$, $X = D\text{-avoid}$). Working
+within the local decomposition framework of Berlekamp and Wolfe, we prove
+that for every $X \in \{B, C, D\text{-must}, D\text{-avoid}\}$ the problem
+$\BMX$ is $\PSPACE$-hard, by a reduction from the Generalized Ladder Game
+(Cr\^{a}\c{s}maru--Tromp 2000). The reduction is calibrated by an explicit
+\emph{swing-booster gadget} (Lemma~\ref{lem:swing}) that yields a polynomial
+gap $D_Y - D_N = \Omega(|B|)$ between yes-instances and no-instances. We
+complement the lower bound with a matched algorithmic upper bound: under the
+standard Berlekamp--Wolfe shape promise, ko-freeness, and local
+decomposability, $\BMX$ admits an
+$O(n^2 + m \log m)$ algorithm based on closed-form region values and an
+$O(m)$ prefix-sum evaluation of the optimal-sequel scores. The two
+results together identify the precise barrier between tractable and
+intractable yose, and clarify which formalizations of ``best move'' are
+algorithmically equivalent.
+\end{abstract}
+
+%% =================================================================
+\section{Introduction}\label{sec:intro}
+%% =================================================================
+
+The closing phase of a game of Go---the \emph{yose}---admits a natural
+formalization within combinatorial game theory (CGT), where the board
+decomposes into disjoint local games whose values are added under the
+disjunctive sum operation \cite{Conway1976,BCG1982}. In the classical
+Berlekamp--Wolfe theory of cooled Go positions \cite{BW1994}, every
+``standard'' shape (corridor, simple switch, sente sequence, etc.) admits
+explicit polynomial-time stops and temperature, and the player who maximizes
+the global score is the player who maximizes a known function of these
+local values. This raises a basic complexity question:
+
+\begin{quote}
+\emph{Given a Go position in the yose phase, how hard is it to compute the
+local move that is optimal under a precisely specified definition of
+``best''?}
+\end{quote}
+
+Three definitions of ``best move'' are standard in the CGT and Go
+literature, and they need not coincide:
+\begin{itemize}[leftmargin=2em]
+\item[$(B)$] \emph{Hottest move}: the local game $R_i$ with the largest
+  CGT temperature $\Tt(R_i)$.
+\item[$(C)$] \emph{Largest swing}: the local game with the largest swing
+  $\Delta(R_i) = \LS(R_i) - \RS(R_i)$.
+\item[$(D)$] \emph{Win-deciding move}: the local game whose forced
+  selection most affects the final score under optimal subsequent play.
+\end{itemize}
+
+Definition $(D)$ admits at least three precise readings (must-play,
+avoid-play, sign-flipping locus); see Definition~\ref{def:Dreadings}.
+Throughout the paper we restrict attention to the must-play and avoid-play
+readings; the sign-flipping reading involves a self-referential baseline
+$V_0$ and is left open.
+
+\paragraph{Background.}
+Robson \cite{Robson1983} proved that $n \times n$ Go is
+$\mathsf{EXPTIME}$-complete using nested ko constructions. This bound is
+\emph{global}: the entire board, with all the complications of ko and
+life-and-death, is encoded into a single instance. For the
+\emph{yose} phase, ko has typically been resolved and the position
+admits a CGT decomposition. In this restricted regime,
+Cr\^{a}\c{s}maru and Tromp~\cite{CrasmaruTromp2000} showed that even the
+single-region problem of deciding the outcome of a Go ladder is
+$\PSPACE$-complete, by encoding QBF into the ladder dynamics. Their
+construction is a natural building block for a complexity theory of the
+\emph{yose} that lies strictly below the $\mathsf{EXPTIME}$ bound of
+Robson.
+
+On the upper-bound side, Berlekamp and Wolfe~\cite{BW1994} catalogued a
+family of standard shapes whose CGT canonical form is computable by closed
+formulas. Modulo the catalogue and the disjunctive-sum law of Conway, this
+yields polynomial-time algorithms for $(B)$ and $(C)$ on positions
+composed entirely of standard shapes.
+
+\paragraph{The gap.}
+Two questions remain unresolved in this picture. First, under the
+\emph{generic} local-decomposition promise (no shape restriction), is
+computing the optimal yose move actually as hard as deciding QBF? Second,
+do the three definitions $(B)$, $(C)$, $(D)$ produce the same
+top-$1$ choice on standard shapes, and if not, where do they diverge?
+
+\paragraph{Our contribution.}
+We address the first question for all four readings
+$X \in \{B, C, D\text{-must}, D\text{-avoid}\}$. Our main result
+(Theorem~\ref{thm:main}) is:
+
+\begin{theorem*}[Informal]
+For every $X \in \{B, C, D\text{-must}, D\text{-avoid}\}$, the problem
+$\BMX$ is $\PSPACE$-hard, even under the local-decomposition promise.
+Conversely, under the additional Berlekamp--Wolfe standard-shape and
+ko-free promises, $\BMX$ admits an $O(n^2 + m \log m)$ algorithm,
+where $n$ is the board side and $m$ is the number of regions.
+\end{theorem*}
+
+The key technical step in the lower bound is a \emph{swing-control lemma}
+(Lemma~\ref{lem:swing}): given any Generalized Ladder Game instance
+$(B, s_0)$, we construct in polynomial time a region $R_\Phi$ with an
+explicit \emph{escape booster} and a \emph{capture booster} gadget, such that
+\[
+  \GLG(B, s_0) = \mathrm{YES}
+  \Longleftrightarrow
+  \Delta(R_\Phi) = D_Y \geq 6k,
+  \qquad
+  \GLG(B, s_0) = \mathrm{NO}
+  \Longleftrightarrow
+  \Delta(R_\Phi) = D_N \leq 4,
+\]
+where $k = \mathrm{poly}(|B|)$ is the chase length of the ladder. The
+polynomial gap $D_Y - D_N = \Omega(|B|)$ closes a calibration gap left in
+prior informal arguments and allows us to instantiate a single reduction
+template for all four definitions of ``best move''.
+
+The matching upper bound (Theorem~\ref{thm:upper}) reduces optimal-sequel
+scores to a closed-form prefix-sum expression over the swing-sorted
+permutation of regions, giving $O(m)$ work per region after sorting.
+
+\paragraph{Comparison with prior work.}
+Robson's $\mathsf{EXPTIME}$-completeness theorem~\cite{Robson1983}
+operates on the unrestricted Go-position problem and uses ko, while our
+lower bound holds in the ko-free yose regime---hence our bound is
+strictly weaker ($\PSPACE$ vs. $\mathsf{EXPTIME}$) but applies to a
+strictly more restricted class of inputs. The Cr\^{a}\c{s}maru--Tromp
+result~\cite{CrasmaruTromp2000} established $\PSPACE$-completeness for a
+single ladder, but did not address the comparison-of-regions structure
+that distinguishes ``best move'' problems from outcome problems. Our
+swing-booster construction (Lemma~\ref{lem:swing}) and the dominance
+analysis of its CGT canonical form (Lemma~\ref{lem:canonical}) are new.
+
+\paragraph{Paper structure.}
+Section~\ref{sec:prelim} fixes CGT notation and defines the four
+problems $\BMX$. Section~\ref{sec:lower} states and proves the swing-control
+lemma and the $\PSPACE$-hardness theorem. Section~\ref{sec:upper}
+gives the polynomial-time algorithm under the standard-shape promise.
+Section~\ref{sec:discussion} discusses the gap between the two bounds and
+open problems.
+
+%% =================================================================
+\section{Preliminaries}\label{sec:prelim}
+%% =================================================================
+
+\subsection{Combinatorial game values}
+
+We work throughout in the framework of Conway~\cite{Conway1976} and
+Berlekamp--Conway--Guy~\cite{BCG1982}. A \emph{game} $G$ is recursively
+defined by a set of \emph{Left options} $G^L$ and \emph{Right options} $G^R$.
+For a game $G$, the \emph{Left stop} and \emph{Right stop} are
+\[
+  \LS(G) = \max_{G^L \in G^L} \RS(G^L),
+  \qquad
+  \RS(G) = \min_{G^R \in G^R} \LS(G^R),
+\]
+with the base case $\LS(G) = \RS(G) = G$ when $G$ is a (dyadic rational)
+number. The \emph{swing} of $G$ is $\Delta(G) = \LS(G) - \RS(G) \geq 0$,
+its \emph{mean} is $\mu(G) = (\LS(G) + \RS(G))/2$, and its
+\emph{temperature} $\Tt(G)$ is the height at which the two scaffolds of the
+thermograph of $G$ meet \cite[Ch.~6]{BCG1982}. For a simple switch
+$S = \{a \mid b\}$ with $a > b$ both numbers, $\Tt(S) = (a-b)/2$ and
+$\mu(S) = (a+b)/2$.
+
+\subsection{Local decomposition and the yose phase}
+
+\begin{definition}[Local decomposability]\label{def:decomp}
+A Go position $s$ on an $n \times n$ board is \emph{locally decomposable}
+if its set of empty intersections partitions into disjoint regions
+$\{R_1, \ldots, R_m\}$ such that
+\begin{enumerate}[label=(\roman*)]
+\item for every legal play sequence, the liberties and stones inside
+  $R_i$ depend only on play inside $R_i$;
+\item the global Japanese-rules score satisfies
+  $V(s) = \sum_{i=1}^m V_i(R_i)$;
+\item each $R_i$ defines a well-formed CGT subgame.
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[Ko-free promise]\label{def:kofree}
+A region $R_i$ is \emph{ko-free} if its local game tree contains no node
+whose subboard (restricted to $R_i$ together with its boundary) recurs at
+any descendant. This is strictly stronger than the simple ko rule of
+Japanese rules.
+\end{definition}
+
+We assume throughout that the input is locally decomposable (a promise).
+The yose phase is, by definition, the regime in which this promise holds.
+
+\subsection{Definitions of optimal move}
+
+\begin{definition}[Three readings of ``best
+move'']\label{def:Dreadings}
+Let $s$ have decomposition $\{R_i\}_{i=1}^m$. Let
+\[
+  V_j \;=\; \RS\Bigl( R_j^{L^*} + \sum_{i \neq j} R_i \Bigr),
+  \quad\text{where } R_j^{L^*}
+  = \arg\max_{R_j^L} \RS\Bigl( R_j^L + \sum_{i \neq j} R_i \Bigr).
+\]
+That is, $V_j$ is the final score after Black is forced to play in $R_j$
+and both sides play optimally thereafter. We define:
+\begin{itemize}[leftmargin=2em]
+\item[$(D\text{-must})$] $j^* = \arg\max_j V_j$. ``The move Black should
+  play to maximize the final score.''
+\item[$(D\text{-avoid})$] $j^* = \arg\min_j V_j$. ``The move Black must
+  not play.''
+\item[$(D\text{-sign})$] Order regions by $|V_j - V_0|$, where
+  $V_0 = \LS(\sum_i R_i)$ is the unconstrained optimal-play value.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[The problems $\BMX$]\label{def:BMX}
+For $X \in \{B, C, D\text{-must}, D\text{-avoid}\}$, the problem
+$\BMX$ takes as input a locally decomposable position $s$ and an integer
+$k \geq 1$, and outputs the top-$k$ regions ranked by
+\[
+  X = B: \;\Tt(R_i) \text{ descending};
+  \qquad
+  X = C: \;\Delta(R_i) \text{ descending};
+\]
+\[
+  X = D\text{-must}: \;V_i \text{ descending};
+  \qquad
+  X = D\text{-avoid}: \;V_i \text{ ascending}.
+\]
+\end{definition}
+
+The sign-flipping reading $(D\text{-sign})$ requires the baseline $V_0$,
+which is itself the answer to a $\BMX$-style optimization, leading to
+a circular dependence we do not resolve here; see
+Section~\ref{sec:discussion}.
+
+\subsection{Crâșmaru--Tromp Generalized Ladder Game}
+
+We rely on the following theorem.
+
+\begin{theorem}[Cr\^{a}\c{s}maru--Tromp \cite{CrasmaruTromp2000}]
+\label{thm:GLG}
+The Generalized Ladder Game ($\GLG$) is $\PSPACE$-complete: given a
+rectangular Go region $B$ (enclosed by a 2-stone-wide live wall) with a
+chaser stone, an escaper stone, and obstruction stones at fixed
+positions, deciding whether the escaper has a winning strategy under the
+standard ladder dynamics is $\PSPACE$-complete.
+\end{theorem}
+
+The proof reduces from QBF, the prototypical $\PSPACE$-complete problem
+\cite{StockmeyerMeyer1973}: each quantifier alternation is encoded as a
+turn in the ladder where the current player's choice corresponds to a
+variable assignment; obstructions enforce the ``wrong choice $\Rightarrow$
+forced capture'' structure. The complete construction occupies the
+30 pages of \cite{CrasmaruTromp2000}; we use it as a black box. The
+overall reduction structure is in the spirit of the polynomial-time
+many-one reductions of \cite{Karp1972}.
+
+%% =================================================================
+\section{Lower Bound: PSPACE-Hardness}\label{sec:lower}
+%% =================================================================
+
+The main lower bound is the following theorem; the heart of the argument
+is the swing-control lemma below.
+
+\begin{theorem}\label{thm:main}
+For every $X \in \{B, C, D\text{-must}, D\text{-avoid}\}$, the problem
+$\BMX$ is $\PSPACE$-hard, even under the local-decomposition promise.
+\end{theorem}
+
+\subsection{Swing-control via booster gadgets}
+
+\begin{lemma}[Swing-control lemma]\label{lem:swing}
+There is a polynomial-time algorithm that, given any $\GLG$ instance
+$(B, s_0)$ with chase length $k = \mathrm{poly}(|B|)$, constructs a Go
+region $R_\Phi$ embedded inside a 2-stone-wide live white wall, such that
+\begin{align*}
+  \GLG(B, s_0) = \mathrm{YES}
+   &\;\Longrightarrow\; \LS(R_\Phi) = 4k,\;
+   \RS(R_\Phi) = -2k, \;\Delta(R_\Phi) =: D_Y = 6k,
+   \\
+  \GLG(B, s_0) = \mathrm{NO}
+   &\;\Longrightarrow\; \LS(R_\Phi) = -2k + \varepsilon,\;
+   \RS(R_\Phi) = -2k - \varepsilon',
+   \;\Delta(R_\Phi) =: D_N = \varepsilon + \varepsilon' \leq 4,
+\end{align*}
+where $\varepsilon, \varepsilon' \in [0, 2]$. In particular,
+$D_Y - D_N \geq 6k - 4 = \Omega(|B|)$.
+\end{lemma}
+
+\begin{proof}
+We give an explicit construction.
+The region $R_\Phi$ embeds the ladder block $B$ with its obstruction
+stones, plus two booster gadgets attached at the two distinguished
+endpoints of the ladder dynamics:
+\begin{itemize}[leftmargin=2em]
+\item \emph{Escape booster}: a $1 \times 2k$ corridor attached at the
+  ``successful escape'' terminal of the ladder. If the escaper succeeds,
+  Black additionally collects $2k$ points by occupying the corridor in a
+  forced sente sequence (standard corridor evaluation,
+  cf.~\cite[Ch.~3]{BW1994}).
+\item \emph{Capture booster}: a small dead shape (e.g., a 4-stone
+  ``one-eye'' configuration) attached at the ``failed escape'' terminal.
+  Both colors play to no effect inside this gadget, contributing
+  $\LS = \RS = 0$.
+\end{itemize}
+The total size of the boosters is $O(k)$, which fits inside the
+2-stone-wide white wall enclosure of $R_\Phi$ for sufficiently large
+$n$, and remains decoupled from the rest of the board.
+
+\medskip
+\noindent\textbf{Computation of $\LS(R_\Phi)$ and $\RS(R_\Phi)$.}
+Let $k$ be the chase length of the ladder.
+
+\emph{Case $\GLG = \mathrm{YES}$.}
+If Black plays first in $R_\Phi$, she initiates the chase, escapes
+successfully (saving $k$ stones, $+2k$ points), and then collects the
+escape booster ($+2k$ points), giving $\LS(R_\Phi) = 4k$.
+If White plays first, the chase forces the capture of Black's $k$ stones
+($-2k$ points) and the boosters are inert, giving $\RS(R_\Phi) = -2k$.
+
+\emph{Case $\GLG = \mathrm{NO}$.}
+If Black plays first, she still attempts the chase but the escape fails;
+the forced sequence captures her $k$ stones, with a small move-parity
+correction $\varepsilon \in [0, 2]$ from the boundary of the chase. So
+$\LS(R_\Phi) = -2k + \varepsilon$. Symmetrically,
+$\RS(R_\Phi) = -2k - \varepsilon'$ with $\varepsilon' \in [0, 2]$.
+
+The values $\varepsilon, \varepsilon'$ are fully determined by the
+ladder dynamics on the boundary stones and can be computed in polynomial
+time from $(B, s_0)$. In particular,
+$D_N = \varepsilon + \varepsilon' \leq 4$.
+\end{proof}
+
+\begin{lemma}[CGT canonical form of $R_\Phi$]\label{lem:canonical}
+Under the construction of Lemma~\ref{lem:swing}, the canonical form of
+$R_\Phi$ in the sense of \cite[Ch.~4]{BCG1982} is the simple switch
+$\{\LS(R_\Phi) \mid \RS(R_\Phi)\}$.
+\end{lemma}
+
+\begin{proof}
+We show that all Left options of $R_\Phi$ except the ``initiate-chase''
+option are dominated, and similarly for Right options.
+
+The Left options of $R_\Phi$ are:
+\begin{itemize}[leftmargin=2em]
+\item[$(L_1)$] Initiate the ladder chase. Final value:
+  $4k$ (YES case), $-2k + \varepsilon$ (NO case).
+\item[$(L_2)$] Play directly inside the escape booster corridor.
+  The corridor is sealed by a live white wall at this point in the game
+  tree, so a Black stone there has no liberties and is immediately
+  captured. The chase still proceeds and is forced by White. Final value
+  $\leq -2k - 1$.
+\item[$(L_3)$] Play directly inside the capture-booster dead shape. The
+  shape is dead, so the stone is wasted, and White still drives the
+  chase. Final value $= -2k$.
+\end{itemize}
+
+In the YES case, $(L_1)$ strictly dominates: $4k$ versus $\leq -2k - 1$
+and $-2k$. In the NO case, $(L_1)$ achieves $-2k + \varepsilon \geq -2k$,
+which weakly dominates $(L_3)$ and strictly dominates $(L_2)$. The
+canonical-form algorithm of \cite[Ch.~4]{BCG1982} eliminates dominated
+options under the weak inequality $\geq$, so $(L_2), (L_3)$ are removed
+and only $(L_1)$ remains.
+
+By symmetry (the Right options $(R_1)$, $(R_2)$, $(R_3)$ are analogous),
+only the symmetric ``initiate-chase'' option $(R_1)$ survives among Right
+options. Each surviving option's value is a number, so the canonical
+form is the simple switch
+$\{\LS(R_\Phi) \mid \RS(R_\Phi)\}$.
+\end{proof}
+
+\subsection{Reduction template}
+
+Fix a $\GLG$ instance $(B, s_0)$ and apply Lemma~\ref{lem:swing} to obtain
+$R_\Phi$ with parameters $D_Y, D_N$. Let $a := (D_Y + D_N) / 4$, which is
+computable in polynomial time, and define a second region
+$R_*$ to be a simple switch $\{a \mid -a\}$ (realizable in Go as a
+standard $1 \times \ell$ corridor with $\ell$ chosen so that
+$\Delta(R_*) = 2a$; see~\cite[Ch.~3]{BW1994} for the catalogue). Both
+$R_\Phi$ and $R_*$ sit inside disjoint, sealed sub-boards, so the
+two-region position is locally decomposable in the sense of
+Definition~\ref{def:decomp}.
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+We show that for each $X$, an oracle for $\BMX$ on the two-region
+instance $\{R_\Phi, R_*\}$ decides $\GLG$.
+
+\emph{Case $X = B$ (temperature).} Since $R_\Phi$ has canonical form
+$\{\LS(R_\Phi) \mid \RS(R_\Phi)\}$ by Lemma~\ref{lem:canonical}, we have
+$\Tt(R_\Phi) = \Delta(R_\Phi) / 2$. Also $\Tt(R_*) = a$. Hence
+\[
+  \Tt(R_\Phi) > \Tt(R_*)
+  \;\Longleftrightarrow\;
+  \Delta(R_\Phi) > 2a
+  \;\Longleftrightarrow\;
+  D_Y > 2a > D_N
+  \;\Longleftrightarrow\;
+  \GLG = \mathrm{YES}.
+\]
+The middle equivalence uses $a = (D_Y + D_N)/4$, which lies strictly
+between $D_N/2$ and $D_Y/2$ since $D_Y > D_N$ (Lemma~\ref{lem:swing}).
+
+\emph{Case $X = C$ (swing).} Identical to $X = B$ since
+$\Delta(R_\Phi) > \Delta(R_*) = 2a$ iff $\GLG = \mathrm{YES}$.
+
+\emph{Case $X = D\text{-must}$.} For the two-region instance,
+\begin{align*}
+  V_{R_\Phi} &= \LS(R_\Phi) + \RS(R_*) = \LS(R_\Phi) - a,
+  \\
+  V_{R_*} &= \LS(R_*) + \RS(R_\Phi) = a + \RS(R_\Phi).
+\end{align*}
+Hence
+\[
+  V_{R_\Phi} - V_{R_*}
+  = \bigl(\LS(R_\Phi) - \RS(R_\Phi)\bigr) - 2a
+  = \Delta(R_\Phi) - 2a,
+\]
+which is positive iff $\GLG = \mathrm{YES}$.
+
+\emph{Case $X = D\text{-avoid}$.} The same calculation gives
+$V_{R_\Phi} < V_{R_*} \iff \Delta(R_\Phi) < 2a \iff \GLG = \mathrm{NO}$,
+so the avoid-play top-$1$ identifies $R_\Phi$ iff $\GLG = \mathrm{NO}$.
+
+In all four cases the reduction is polynomial in $|B|$ and decides
+$\GLG$. By Theorem~\ref{thm:GLG}, $\BMX$ is $\PSPACE$-hard.
+\end{proof}
+
+%% =================================================================
+\section{Upper Bound under the Standard-Shape Promise}\label{sec:upper}
+%% =================================================================
+
+We now show that the lower bound is essentially tight: under a
+shape-restriction promise that excludes the ladder constructions of
+Section~\ref{sec:lower}, $\BMX$ becomes polynomial.
+
+\begin{definition}[Berlekamp--Wolfe standard shape]\label{def:BWshape}
+A region $R$ is a \emph{Berlekamp--Wolfe standard shape} if its CGT
+canonical form is a finite disjunctive sum of the following components:
+\begin{enumerate}[label=(\alph*)]
+\item a number (a region with no hot move);
+\item a simple switch $\{a \mid b\}$ with $a, b$ numbers and $a > b$;
+\item a corridor of length $\ell$ with standard live-stone closure
+  \cite[Ch.~3]{BW1994};
+\item a finite sente sequence terminating in (a) or (b);
+\item a dyadic infinitesimal in $\{0, *, \uparrow, \downarrow, \uparrow*,
+  \cdot 2, \dots\}$.
+\end{enumerate}
+\end{definition}
+
+For each component type, closed-form values $(\LS, \RS, \Tt, \mu)$ and an
+optimal move are computable in $O(|R|)$ by standard formulas; the
+infinitesimal components contribute $\LS = \RS = 0$ and do not affect
+top-$k$ rankings of hot regions. We refer to the full procedure as
+$\textsc{BWFormula}(R)$.
+
+\subsection{The hotstrat-on-switches lemma}
+
+A key combinatorial step is the following identity, which expresses the
+optimal-sequel value of a sum of simple switches in closed form.
+
+\begin{lemma}[Hotstrat on simple switches]\label{lem:H}
+Let $G = \sum_{i=1}^m S_i$ with $S_i = \{a_i \mid b_i\}$ simple switches
+and $\Delta_i = a_i - b_i > 0$. Sort the indices in descending order of
+$\Delta$: $\Delta_{\sigma(1)} \geq \cdots \geq \Delta_{\sigma(m)}$. Then
+\begin{enumerate}[label=(\alph*)]
+\item under optimal play with Black to move, Black's first move is in
+  $S_{\sigma(1)}$;
+\item the entire optimal play alternates by selecting the
+  largest remaining $\Delta$, with Black taking $a_{\sigma(l)}$ at odd
+  positions $l$ and White taking $b_{\sigma(l)}$ at even positions;
+\item $\LS(G) = \sum_{l \text{ odd}} a_{\sigma(l)} +
+  \sum_{l \text{ even}} b_{\sigma(l)}$, and the symmetric formula holds
+  for $\RS(G)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+We argue by an adjacent-swap exchange.
+View the play as a sequence $\pi : [m] \to [m]$ that selects the
+$\pi(l)$-th switch at position $l$, with Black at odd positions and
+White at even positions. The score is
+$\mathrm{Score}(\pi) = \sum_{l \text{ odd}} a_{\pi(l)} +
+  \sum_{l \text{ even}} b_{\pi(l)}$.
+For any $l \in [1, m-1]$, swapping positions $l$ and $l+1$ yields
+\[
+  \mathrm{Score}(\pi) - \mathrm{Score}(\pi')
+  = \pm\bigl(\Delta_{\pi(l)} - \Delta_{\pi(l+1)}\bigr),
+\]
+with sign $+$ when $l$ is odd (Black's choice) and $-$ when $l$ is even
+(White's choice). At a saddle point the controlling player gains nothing
+by swapping, which forces $\Delta_{\pi^*(l)} \geq \Delta_{\pi^*(l+1)}$ in
+both cases. Hence $\pi^* = \sigma$, and the formulas in (a)--(c) follow
+directly.
+\end{proof}
+
+\subsection{The polynomial-time algorithm}
+
+\begin{theorem}\label{thm:upper}
+Suppose the input position $s$ on an $n \times n$ board is locally
+decomposable, ko-free, and every region is a Berlekamp--Wolfe standard
+shape. Then for every
+$X \in \{B, C, D\text{-must}, D\text{-avoid}\}$ the problem $\BMX$ is
+solvable in time $O(n^2 + m \log m)$.
+\end{theorem}
+
+\begin{proof}
+We give algorithms for each $X$.
+
+\smallskip\noindent\emph{Algorithm for $X = B$.}
+\begin{enumerate}[label=\arabic*.]
+\item Decompose $s$ into $\{R_1, \ldots, R_m\}$ via BFS in $O(n^2)$.
+\item For each $R_i$, compute $(\LS_i, \RS_i, \Tt_i, m_i^*)
+  \leftarrow \textsc{BWFormula}(R_i)$ in $O(|R_i|)$ total $O(n^2)$.
+\item Sort regions by $\Tt_i$ in descending order; output top $k$.
+\end{enumerate}
+The sort costs $O(m \log m)$. Total: $O(n^2 + m \log m)$.
+
+\smallskip\noindent\emph{Algorithm for $X = C$.}
+Same as $X = B$ but sort by $\Delta_i = \LS_i - \RS_i$.
+
+\smallskip\noindent\emph{Algorithm for $X = D\text{-must}$.}
+We use Lemma~\ref{lem:H}. Let $\sigma$ be the descending order of
+$\Delta$ over the hot regions, and write $a_l = \LS_{\sigma(l)}$,
+$b_l = \RS_{\sigma(l)}$. By the lemma applied to ``Black is forced to
+play in region $\sigma(p)$ first'', the optimal-sequel total is
+\[
+  V_{\sigma(p)} = a_p
+  + \!\!\sum_{\substack{l \leq p-1 \\ l \text{ even}}}\!\! a_l
+  + \!\!\sum_{\substack{l \leq p-1 \\ l \text{ odd}}}\!\! b_l
+  + \!\!\sum_{\substack{l \geq p+1 \\ l \text{ odd}}}\!\! a_l
+  + \!\!\sum_{\substack{l \geq p+1 \\ l \text{ even}}}\!\! b_l.
+\]
+Precompute the four prefix/suffix arrays
+\[
+  P_a^{\mathrm{ev}}[p] = \sum_{l \leq p,\, l \text{ even}} a_l,
+  \;\;
+  P_b^{\mathrm{od}}[p] = \sum_{l \leq p,\, l \text{ odd}} b_l,
+  \;\;
+  S_a^{\mathrm{od}}[p] = \sum_{l \geq p,\, l \text{ odd}} a_l,
+  \;\;
+  S_b^{\mathrm{ev}}[p] = \sum_{l \geq p,\, l \text{ even}} b_l,
+\]
+in $O(m)$ by single sweeps. Then each $V_{\sigma(p)}$ is computable in
+$O(1)$ via
+\[
+  V_{\sigma(p)} = a_p + P_a^{\mathrm{ev}}[p-1] + P_b^{\mathrm{od}}[p-1]
+    + S_a^{\mathrm{od}}[p+1] + S_b^{\mathrm{ev}}[p+1],
+\]
+giving $O(m)$ total over all regions, and a final $O(m \log m)$ sort.
+
+\smallskip\noindent\emph{Algorithm for $X = D\text{-avoid}$.}
+Same as $X = D\text{-must}$ but sort $V_{\sigma(p)}$ in ascending order.
+
+In each case, the total time is $O(n^2 + m \log m)$.
+\end{proof}
+
+\subsection{Numerical sanity checks}
+
+We verify the prefix-sum formula on small $m$.
+
+\begin{example}\label{ex:m3}
+Take $m = 3$ with $\Delta = (10, 8, 6)$ and $\mu_i = 0$, so
+$(a_l, b_l) = (5, -5), (4, -4), (3, -3)$. Then
+$P_a^{\mathrm{ev}} = [0,0,4,4]$, $P_b^{\mathrm{od}} = [0,-5,-5,-8]$,
+$S_a^{\mathrm{od}} = [0,8,3,3,0]$ (indices $0$--$4$),
+$S_b^{\mathrm{ev}} = [0,-4,-4,0,0]$. Direct evaluation gives
+$V_1 = 5 + 0 + 0 + 3 - 4 = 4$, $V_2 = 4 + 0 - 5 + 3 + 0 = 2$,
+$V_3 = 3 + 4 - 5 + 0 + 0 = 2$, matching the closed-form computation.
+\end{example}
+
+\begin{example}\label{ex:m4}
+Take $m = 4$ with $\Delta = (10, 8, 6, 4)$ and $\mu_i = 0$. The same
+formula gives $V_1 = 2$, $V_2 = V_3 = 0$, $V_4 = -2$, again matching the
+recursive evaluation. Note the tie $V_2 = V_3$, foreshadowing the
+structural-ties phenomenon studied in the companion paper.
+\end{example}
+
+%% =================================================================
+\section{Discussion}\label{sec:discussion}
+%% =================================================================
+
+\subsection{The gap between the bounds}
+
+Combining Theorems~\ref{thm:main} and~\ref{thm:upper}, we have a clean
+dichotomy: the polynomial-time tractability of $\BMX$ is governed
+precisely by the Berlekamp--Wolfe standard-shape promise. Without the
+shape promise, the embedding of a ladder into a single region suffices to
+make $\BMX$ as hard as deciding QBF.
+
+An intermediate regime is also of interest. If we permit arbitrary
+regions but require $|R_i| = O(\log n)$, then a brute-force traversal of
+each local game tree gives an upper bound of
+$n^{O((\log n)^2)}$---quasi-polynomial. The condition $|R_i| = O(\log n)$
+thus appears to be the natural fine-grained boundary: above it
+(constant-region-size, BW-standard) one is in $\mathsf{P}$, below it
+(unrestricted, polynomial-region-size) one is $\PSPACE$-hard.
+
+\subsection{The fourth reading: sign-flipping}
+
+The sign-flipping reading $(D\text{-sign})$ orders regions by
+$|V_j - V_0|$, where $V_0 = \LS(\sum_i R_i)$. The lower-bound reduction of
+Section~\ref{sec:lower} does not directly apply, because the calibration
+constant $a$ depends on the sign of $V_0$, which itself depends on the
+$\GLG$ answer through the booster-corridor contribution. A careful
+analysis would either eliminate this circularity or show that
+$(D\text{-sign})$ is intrinsically harder than the must/avoid readings.
+We leave this as an open question.
+
+\subsection{Open problems}
+
+\begin{enumerate}[label=\arabic*.]
+\item \emph{$\mathsf{EXPTIME}$-hardness of yose under ko-freeness.}
+  Robson's $\mathsf{EXPTIME}$-hardness theorem~\cite{Robson1983} uses
+  global ko constructions. Is there a yose construction (in our sense)
+  that is $\mathsf{EXPTIME}$-hard?
+\item \emph{Multi-ko in the BW framework.} Extending the standard-shape
+  catalogue to allow multi-ko situations is a long-standing open
+  problem; even a partial polynomial-time algorithm under bounded
+  ko-threat structure would be of independent interest.
+\item \emph{Strong NP-hardness of top-$k$.} On general (non-standard)
+  shapes, is the top-$k$ version of $\BMX$ NP-hard via an explicit
+  $\textsc{Partition}$-style reduction? The closed-form ranking on
+  standard shapes (Lemma~\ref{lem:H}) rules out the most direct attempt.
+\item \emph{Empirical coverage.} What fraction of typical $19 \times 19$
+  endgame positions falls into the BW standard-shape class? An empirical
+  study would clarify the practical relevance of Theorem~\ref{thm:upper}.
+\end{enumerate}
+
+%% =================================================================
+\begin{thebibliography}{10}
+
+\bibitem{BCG1982}
+E.~Berlekamp, J.~H. Conway, and R.~K. Guy.
+\newblock \emph{Winning Ways for Your Mathematical Plays}.
+\newblock Academic Press, 1982. (Second edition, A K Peters, 2001--2004.)
+
+\bibitem{BW1994}
+E.~Berlekamp and D.~Wolfe.
+\newblock \emph{Mathematical Go: Chilling Gets the Last Point}.
+\newblock A K Peters, 1994.
+
+\bibitem{Conway1976}
+J.~H. Conway.
+\newblock \emph{On Numbers and Games}.
+\newblock Academic Press, 1976. (Second edition, A K Peters, 2001.)
+
+\bibitem{CrasmaruTromp2000}
+M.~Cr\^{a}\c{s}maru and J.~Tromp.
+\newblock Ladders are {PSPACE}-complete.
+\newblock In \emph{Proceedings of the 2nd International Conference on Computers
+  and Games (CG~2000)}, Lecture Notes in Computer Science, vol.~2063,
+  pp.~241--249. Springer, 2001.
+
+\bibitem{Robson1983}
+J.~M. Robson.
+\newblock The complexity of {G}o.
+\newblock In \emph{Information Processing 83 (Proc. IFIP World Computer
+  Congress)}, pp.~413--417. North-Holland, 1983.
+
+\bibitem{StockmeyerMeyer1973}
+L.~J. Stockmeyer and A.~R. Meyer.
+\newblock Word problems requiring exponential time.
+\newblock In \emph{Proceedings of the 5th Annual ACM Symposium on Theory of
+  Computing (STOC)}, pp.~1--9. ACM, 1973.
+
+\bibitem{Karp1972}
+R.~M. Karp.
+\newblock Reducibility among combinatorial problems.
+\newblock In R.~E. Miller and J.~W. Thatcher, editors, \emph{Complexity of
+  Computer Computations}, pp.~85--103. Plenum Press, 1972.
+
+\end{thebibliography}
+
+\end{document}

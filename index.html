@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圍棋官子最好一手電腦能不能算？四種「最好」、一個 PSPACE 困難、與「先下大的」何時失效</title>
+<meta name="description" content="圍棋官子最好一手能不能算？乾淨盤面下四步公式可解；一般情況電腦永遠算不快（PSPACE-hard）；「先下大的」這條常識在含 follow-up 時失效，附完整反例與 D3 視覺化。">
+<meta name="keywords" content="圍棋, 官子, yose, 最佳一手, CGT, combinatorial game theory, PSPACE-hard, Hotstrat, Berlekamp-Wolfe, 高中數學">
+<meta name="author" content="weiqi.kids">
+<link rel="canonical" href="https://go-yose-optimal-move-computation.proof.weiqi.kids/">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="圍棋官子最好一手能不能算？">
+<meta property="og:description" content="乾淨官子四步公式可解；一般情況電腦算不快（PSPACE-hard）；「先下大的」何時失效——四種「最好」之完整刻畫。">
+<meta property="og:url" content="https://go-yose-optimal-move-computation.proof.weiqi.kids/">
+<meta property="og:site_name" content="weiqi.kids">
+<meta property="og:locale" content="zh_TW">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="圍棋官子最好一手能不能算？">
+<meta name="twitter:description" content="乾淨官子四步公式可解；一般情況算不快；「先下大的」何時失效。">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ScholarlyArticle",
+  "headline": "圍棋官子最好一手電腦能不能算？四種「最好」、一個 PSPACE 困難、與「先下大的」何時失效",
+  "description": "對 n×n 圍棋盤面之 BEST-MOVE-X 問題（X∈{B,C,D-must,D-avoid}）給出可計算性精確刻畫：在乾淨官子可 O(n²+m log m) 求解；一般情況下 PSPACE-hard；附 Hotstrat 失效之顯式反例與成對 ties F2 之結構性結果。",
+  "datePublished": "2026-05-02",
+  "inLanguage": "zh-Hant",
+  "url": "https://go-yose-optimal-move-computation.proof.weiqi.kids/",
+  "author": {
+    "@type": "Organization",
+    "name": "weiqi.kids",
+    "url": "https://github.com/weiqi-kids"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "weiqi.kids"
+  },
+  "mainEntityOfPage": "https://go-yose-optimal-move-computation.proof.weiqi.kids/",
+  "isAccessibleForFree": true,
+  "keywords": ["圍棋官子", "Combinatorial Game Theory", "PSPACE-hard", "Hotstrat", "Berlekamp-Wolfe", "Crâșmaru-Tromp", "best move", "yose"],
+  "about": [
+    "Combinatorial Game Theory",
+    "Computational Complexity",
+    "Go Endgame",
+    "PSPACE-hardness"
+  ],
+  "encoding": [
+    {
+      "@type": "MediaObject",
+      "name": "Paper A：On the Computational Complexity of the Optimal Yose Move in Go via Combinatorial Game Theory",
+      "contentUrl": "https://go-yose-optimal-move-computation.proof.weiqi.kids/paper-a/paper.pdf",
+      "encodingFormat": "application/pdf"
+    },
+    {
+      "@type": "MediaObject",
+      "name": "Paper B：Hotstrat Optimality Fails: Structural Counterexamples in Mixed-Sum Combinatorial Games",
+      "contentUrl": "https://go-yose-optimal-move-computation.proof.weiqi.kids/paper-b/paper.pdf",
+      "encodingFormat": "application/pdf"
+    }
+  ]
+}
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "圍棋官子最好一手，電腦能不能算？",
+      "acceptedAnswer": {"@type": "Answer", "text": "在乾淨官子（每塊空地互不影響、無劫、形狀屬於常見型）下，電腦可以快速算出，公式四步可解；但一般情況下電腦永遠算不快——這個問題等價於困難等級 PSPACE-hard 的形式邏輯題。"}
+    },
+    {
+      "@type": "Question",
+      "name": "「先下大的」這條圍棋常識永遠對嗎？",
+      "acceptedAnswer": {"@type": "Answer", "text": "不對。當某一塊有 follow-up（先動之後對方還能反擊）時，「先下溫度最高那塊」可能輸 6 目以上。本頁列出顯式反例 G+H：溫度高的 G 不該先下，反而要先下溫度低的 H。"}
+    },
+    {
+      "@type": "Question",
+      "name": "「最好」的一手是什麼意思？",
+      "acceptedAnswer": {"@type": "Answer", "text": "至少有四種定義：(B) 溫度最高那塊（先下大的）；(C) 黑先動 vs 白先動的得分差最大；(D-must) 黑該下哪手能讓最終得分最高；(D-avoid) 黑絕不能下哪手（誰下誰倒大楣）。四者通常不相同。"}
+    },
+    {
+      "@type": "Question",
+      "name": "為什麼一般情況算不快？",
+      "acceptedAnswer": {"@type": "Answer", "text": "Crâșmaru–Tromp 2000 證明圍棋的「梯子追逐」已經是 PSPACE-complete（與 QBF 同等困難）。本研究把此 reduction 移植到 BEST-MOVE-X：給 GLG 加上 swing booster gadget，使 yes/no 兩 case 之得分差為 6k vs ≤ 4，poly 校準完成 PSPACE-hardness。"}
+    },
+    {
+      "@type": "Question",
+      "name": "什麼是 D-must 之成對 ties？",
+      "acceptedAnswer": {"@type": "Answer", "text": "對 m≥3 個 simple switch 之和，D-must 排序之第 2 名與第 3 名、第 4 名與第 5 名... 必定打平：V_σ(2k) = V_σ(2k+1)。這不是巧合，而是「對弈序列項對換」之代數結構強迫。"}
+    },
+    {
+      "@type": "Question",
+      "name": "本研究與 Berlekamp–Wolfe 1994 的關係？",
+      "acceptedAnswer": {"@type": "Answer", "text": "BW 1994 之 cool-by-temperature 框架是本研究 BWFormula 子程式之 inspiration。本研究新意：(1) 把 BW 之公式串成完整 O(n²+m log m) 算法、(2) 補上對應的 PSPACE-hardness 下界、(3) 釐清四種「最好」定義間的關係（F1/F2/F3 三定理）。"}
+    },
+    {
+      "@type": "Question",
+      "name": "可以拿來實戰嗎？",
+      "acceptedAnswer": {"@type": "Answer", "text": "終局後段、各塊已穩定、純收 corridor 的局面適用。中盤含戰鬥不適用。本 repo 附 tool.html（互動工具）可輸入盤面試算。"}
+    }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --bg-base:    oklch(0.97 0.005 250);
+  --bg-surface: oklch(0.94 0.005 250);
+  --bg-overlay: oklch(0.90 0.008 250);
+  --bg-hover:   oklch(0.92 0.005 250);
+  --text-primary:   oklch(0.20 0.01 250);
+  --text-secondary: oklch(0.45 0.01 250);
+  --text-muted:     oklch(0.60 0.008 250);
+  --border-subtle: oklch(0.85 0.005 250);
+  --color-pass:     oklch(0.48 0.16 150);
+  --color-critical: oklch(0.55 0.22 25);
+  --color-fail:     oklch(0.55 0.22 25);
+  --color-info:     oklch(0.52 0.13 240);
+  --color-link:     oklch(0.48 0.15 250);
+  --color-high:     oklch(0.55 0.16 55);
+  --color-warn:     oklch(0.52 0.14 80);
+  --text-xs:  1.125rem;
+  --text-sm:  1.25rem;
+  --text-base: 1.5rem;
+  --text-lg:  1.75rem;
+  --text-xl:  2rem;
+  --text-2xl: 3rem;
+  --text-3xl: 3.5rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --bg-base: #f5f6f8; --bg-surface: #ecedf0; --bg-overlay: #dfe0e5;
+    --bg-hover: #e5e6ea;
+    --text-primary: #1e2030; --text-secondary: #5e6070; --text-muted: #8a8c98;
+    --border-subtle: #d5d6da;
+    --color-pass: #1e8050; --color-critical: #c93135; --color-fail: #c93135;
+    --color-info: #2a6bb8; --color-link: #1e5ab8;
+    --color-high: #b86a2a; --color-warn: #8a7020;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; scroll-padding-top: 4rem; }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg-base);
+}
+[data-nav] { scroll-margin-top: 4rem; }
+a { color: var(--color-link); }
+
+/* === GitHub Corner === */
+.github-corner { position: fixed; top: 0; right: 0; z-index: 101; border: 0; text-decoration: none; }
+.github-corner svg { fill: var(--color-info); color: var(--bg-base); width: 80px; height: 80px; }
+.github-corner:focus-visible { outline: 3px solid var(--color-link); }
+.github-corner:hover .octo-arm { animation: octocat-wave 560ms ease-in-out; }
+@keyframes octocat-wave {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(-25deg); }
+  40%, 80% { transform: rotate(10deg); }
+}
+
+/* === Sticky Nav === */
+#logic-map {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: 0.25rem;
+  padding: 0.5rem 1.25rem 0.5rem 0.75rem;
+  overflow-x: auto; white-space: nowrap;
+}
+#logic-map a {
+  display: inline-block;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.25rem;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+#logic-map a:hover { background: var(--bg-hover); color: var(--text-primary); }
+#logic-map a.active { background: var(--color-link); color: var(--bg-base); }
+#logic-map .nav-sep { color: var(--text-muted); font-size: var(--text-xs); user-select: none; }
+
+/* === Main === */
+main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* === Hero === */
+#hero { text-align: center; padding: 3rem 0 2rem; }
+#hero h1 { font-size: var(--text-3xl); font-weight: 700; margin-bottom: 0.5rem; line-height: 1.25; }
+#hero .subtitle { font-size: var(--text-lg); color: var(--text-secondary); margin-bottom: 1.5rem; }
+#hero .answer-box {
+  background: var(--bg-surface);
+  border-radius: 0.5rem;
+  padding: 1.5rem 2rem;
+  text-align: left;
+  display: inline-block;
+  max-width: 56rem;
+}
+#hero .answer-box ol { padding-left: 1.5rem; margin-top: 0.75rem; }
+#hero .answer-box ol li { margin-bottom: 0.5rem; }
+#hero .answer-headline { font-size: var(--text-base); margin-bottom: 0.25rem; }
+#hero .answer-headline strong { color: var(--color-pass); }
+
+/* === Download Section === */
+.download-section {
+  margin: 2rem auto 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+.download-intro {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.download-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+.download-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.875rem 1.25rem;
+  background: var(--bg-base);
+  border: 2px solid var(--color-link);
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  min-width: 16rem;
+  max-width: 26rem;
+  text-align: left;
+}
+.download-btn:hover {
+  background: var(--color-link);
+  color: var(--bg-base);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px oklch(0.48 0.15 250 / 0.25);
+}
+.download-btn:focus-visible {
+  outline: 3px solid var(--color-link);
+  outline-offset: 2px;
+}
+.download-btn .download-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  display: block;
+  line-height: 1.35;
+}
+.download-btn .download-meta {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+.download-btn:hover .download-meta {
+  color: oklch(0.95 0.005 250);
+}
+.download-btn .download-icon {
+  display: inline-block;
+  margin-right: 0.4rem;
+}
+
+/* Tool link button */
+.tool-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+}
+.tool-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* === Theorem Sections === */
+.theorem-section {
+  background: var(--bg-surface);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+.theorem-section h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+}
+.layer-intuition {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+.layer-intuition p { margin-bottom: 0.75rem; }
+.layer-intuition p:last-child { margin-bottom: 0; }
+.layer-intuition .lead {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.layer details {
+  margin-top: 1rem;
+  background: var(--bg-base);
+  border-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid var(--border-subtle);
+}
+.layer summary {
+  font-size: var(--text-base);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  color: var(--text-primary);
+  list-style: none;
+}
+.layer summary::before {
+  content: "▶︎ ";
+  font-size: var(--text-xs);
+  transition: transform 0.3s ease-out;
+  display: inline-block;
+  color: var(--color-info);
+}
+.layer details[open] summary::before { transform: rotate(90deg); }
+.layer-content { padding: 0.5rem 0 0.75rem; font-size: var(--text-sm); line-height: 1.7; }
+.layer-content p { margin-bottom: 0.75rem; }
+.layer-content ul, .layer-content ol { padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.layer-content li { margin-bottom: 0.4rem; }
+
+/* === Tables === */
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: var(--text-sm);
+  background: var(--bg-base);
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+.cmp-table th, .cmp-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+.cmp-table th {
+  background: var(--bg-overlay);
+  font-weight: 700;
+  font-size: var(--text-xs);
+}
+.cmp-table tr:last-child td { border-bottom: none; }
+.cmp-table .num { text-align: center; font-variant-numeric: tabular-nums; }
+.cmp-table .pass { color: var(--color-pass); font-weight: 700; }
+.cmp-table .fail { color: var(--color-fail); font-weight: 700; }
+.cmp-table .warn { color: var(--color-high); font-weight: 700; }
+
+/* === Charts === */
+.chart-container {
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+.chart-container h3 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.chart-container .chart-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+.chart-container .chart-canvas {
+  width: 100%;
+  position: relative;
+}
+.chart-container svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.chart-container .chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: var(--text-xs);
+}
+.chart-container .chart-controls label {
+  color: var(--text-secondary);
+}
+.chart-container .chart-controls input[type=range] {
+  flex: 1;
+  min-width: 8rem;
+  accent-color: var(--color-info);
+}
+.chart-container .chart-controls .val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+/* AEO 按鈕 */
+.share-ai-btn {
+  margin-left: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  background: var(--bg-base);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.2s;
+}
+.share-ai-btn:hover { background: var(--bg-hover); color: var(--color-info); border-color: var(--color-info); }
+.share-ai-btn:focus-visible { outline: 2px solid var(--color-link); outline-offset: 2px; }
+.share-ai-btn.copied { color: var(--color-pass); border-color: var(--color-pass); }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  padding: 2rem 1.5rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+footer a { color: var(--color-link); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+footer p { margin-bottom: 0.5rem; }
+
+/* Highlight box */
+.highlight-box {
+  background: var(--bg-base);
+  border-left: 4px solid var(--color-info);
+  border-radius: 0.25rem;
+  padding: 0.875rem 1rem;
+  margin: 0.75rem 0;
+  font-size: var(--text-sm);
+}
+.highlight-box.warn { border-left-color: var(--color-high); }
+.highlight-box.fail { border-left-color: var(--color-fail); }
+.highlight-box.pass { border-left-color: var(--color-pass); }
+
+/* Stats badges */
+.stat-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.75rem 0;
+}
+.stat-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  font-size: var(--text-sm);
+}
+.stat-badge .stat-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-info);
+  font-size: var(--text-base);
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  :root {
+    --text-3xl: 2.25rem;
+    --text-2xl: 1.875rem;
+    --text-xl:  1.5rem;
+    --text-lg:  1.25rem;
+    --text-base: 1.125rem;
+    --text-sm:  1rem;
+    --text-xs:  0.875rem;
+  }
+  main { padding: 1rem; }
+  .theorem-section { padding: 1rem; }
+  .github-corner svg { width: 60px; height: 60px; }
+  .github-corner:hover .octo-arm { animation: none; }
+  .github-corner .octo-arm { animation: octocat-wave 560ms ease-in-out; }
+  #hero { padding: 2rem 0 1.5rem; }
+  #hero .answer-box { padding: 1rem 1.25rem; }
+  .download-btn { min-width: 100%; }
+  .cmp-table { font-size: var(--text-xs); }
+  .cmp-table th, .cmp-table td { padding: 0.375rem 0.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .github-corner:hover .octo-arm,
+  .github-corner .octo-arm { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- 右上角 octocat（P0 主要 link） -->
+<a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation" class="github-corner"
+   aria-label="View source on GitHub" target="_blank" rel="noopener">
+  <svg viewBox="0 0 250 250" aria-hidden="true">
+    <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path>
+    <path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+          fill="currentColor" style="transform-origin:130px 106px" class="octo-arm"></path>
+    <path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+          fill="currentColor"></path>
+  </svg>
+</a>
+
+<!-- Sticky 導覽（含 anchor link） -->
+<nav id="logic-map" aria-label="Section navigation">
+  <a href="#hero">首頁</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-intuition">先下大的</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-four-best">四種最好</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-clean-yose">乾淨官子</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-pspace">電腦算不快</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-hotstrat-fail">先下大的失效</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-paired-ties">成對打平</a>
+  <span class="nav-sep">·</span>
+  <a href="#sec-deep">深入</a>
+  <span style="flex:1"></span>
+  <a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation" target="_blank" rel="noopener"
+     aria-label="View source on GitHub">GitHub</a>
+</nav>
+
+<main>
+
+  <!-- ===== Hero ===== -->
+  <section id="hero">
+    <h1>圍棋官子最好一手電腦能不能算？</h1>
+    <p class="subtitle">四種「最好」、一個 PSPACE 困難、與「先下大的」何時失效</p>
+
+    <div class="answer-box">
+      <p class="answer-headline"><strong>一句話答案：</strong>乾淨官子下，四步公式可解；一般情況電腦永遠算不快；「先下大的」這條常識在含 follow-up 時會失效。</p>
+      <ol>
+        <li><strong>乾淨官子可秒解</strong>：每塊空地互不影響、無劫、形狀屬於常見型（corridor / switch / 已成定地），算每塊的「先動 vs 後動得分差」 Δ，下 Δ 最大那塊的關鍵點。複雜度 $O(n^2 + m \log m)$。</li>
+        <li><strong>一般情況算不快</strong>：去掉「乾淨」假設後，問題變成 PSPACE-hard——直觀說「電腦永遠算不快」，等價於要解很長的形式邏輯題。</li>
+        <li><strong>「最好」其實有四種</strong>：(B) 溫度最高；(C) 得分差最大；(D-must) 該下哪手最有利；(D-avoid) 絕不能下哪手。四者通常不一樣。</li>
+        <li><strong>「先下大的」會失效</strong>：當某塊有 follow-up（先動之後對方還能反擊），先下溫度最高那塊可能輸 6 目以上。本頁附顯式反例 G+H。</li>
+        <li><strong>D-must 的詭異成對打平</strong>：對 m≥3 個 simple switch 之和，第 2 名與第 3 名、第 4 名與第 5 名... 必定打平。這是代數結構強迫的，不是巧合。</li>
+      </ol>
+    </div>
+
+    <!-- 論文下載區 -->
+    <div class="download-section">
+      <p class="download-intro">完整論文下載（學術版，英文）：</p>
+      <div class="download-buttons">
+        <a href="paper-a/paper.pdf" class="download-btn"
+           data-paper="paper-a"
+           target="_blank" rel="noopener"
+           aria-label="下載 Paper A 之 PDF 完整版">
+          <span class="download-title">
+            <span class="download-icon">📄</span>Paper A：On the Computational Complexity of the Optimal Yose Move in Go via Combinatorial Game Theory
+          </span>
+          <span class="download-meta">PDF · 7 頁 · 322 KB</span>
+        </a>
+        <a href="paper-b/paper.pdf" class="download-btn"
+           data-paper="paper-b"
+           target="_blank" rel="noopener"
+           aria-label="下載 Paper B 之 PDF 完整版">
+          <span class="download-title">
+            <span class="download-icon">📄</span>Paper B：Hotstrat Optimality Fails: Structural Counterexamples in Mixed-Sum Combinatorial Games
+          </span>
+          <span class="download-meta">PDF · 7 頁 · 296 KB</span>
+        </a>
+      </div>
+      <a href="tool.html" class="tool-link" aria-label="開啟互動工具">▷ 開啟互動工具（輸入盤面，算最佳一手）</a>
+    </div>
+  </section>
+
+  <!-- ===== §1 直覺切入 ===== -->
+  <section id="sec-intuition" class="theorem-section" data-nav="intuition">
+    <h2>§1 「先下大的」這條常識何時對、何時錯？</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">圍棋從小被教：「官子要先下大的」——意思是先下「這手值最多目」那塊。</p>
+      <p>這條常識在 95% 的情況都對。但有一種詭異情形：你眼睛看到「這塊 10 目」，下完之後對方反擊一手，你的得分倒退到 2 目；而旁邊那塊本來只值 8 目，你先下卻能穩穩拿 8 目。這時「先下大的」害你輸了 6 目。</p>
+      <p>這種情形在數學上叫做「Hotstrat 失效」。Hot 在 CGT（組合博弈論）裡指「這手值多少目」（溫度），Hotstrat 就是「先下溫度最高那塊」的策略。</p>
+      <p><strong>本頁要說明</strong>：什麼時候 Hotstrat 對、什麼時候錯，以及錯的時候該怎麼算。</p>
+    </div>
+
+    <details class="layer">
+      <summary>形式化定義：什麼是「溫度」、什麼是「Hotstrat」？</summary>
+      <div class="layer-content">
+        <p>對一個 CGT 局部 $G$，定義：</p>
+        <ul>
+          <li><strong>左停止值</strong> $LS(G)$：黑先動、之後雙方最佳對弈、終局得分。</li>
+          <li><strong>右停止值</strong> $RS(G)$：白先動、之後雙方最佳對弈、終局得分。</li>
+          <li><strong>swing</strong> $\Delta(G) = LS(G) - RS(G)$：先動 vs 後動的得分差。</li>
+          <li><strong>溫度</strong> $T(G)$：對 simple switch $\{a \mid b\}$ 而言 $T = (a-b)/2 = \Delta/2$；一般 hot 局部用 thermograph 之 mast 高度（BCG Ch. 6）。</li>
+        </ul>
+        <p><strong>Hotstrat</strong>（標準 CGT 啟發式）：當盤面是多個獨立局部之和 $G_1 + G_2 + \cdots + G_m$，永遠先下 $\arg\max_i T(G_i)$。</p>
+        <p>BCG 1982 的標準定理：在「all-small」或「無共享威脅」假設下，Hotstrat 是最優的。本研究關心的是這假設失效時——即 mixed sum with hot follow-up——Hotstrat 何時與最佳對弈分歧（§5 反例）。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== §2 四種最好 ===== -->
+  <section id="sec-four-best" class="theorem-section" data-nav="four-best">
+    <h2>§2 「最好」其實有 4 種定義</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">當你說「圍棋官子最好下哪？」，數學上其實有四種解讀：</p>
+      <table class="cmp-table">
+        <thead>
+          <tr>
+            <th>代號</th><th>數學名稱</th><th>圍棋話翻譯</th><th>例：應該下哪？</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>B</strong></td><td>Hotstrat（溫度最大）</td>
+            <td>「先下大的」——這手值最多目那塊</td>
+            <td>先下溫度 8 那塊</td>
+          </tr>
+          <tr>
+            <td><strong>C</strong></td><td>swing 最大</td>
+            <td>「先動 vs 後動差最多」那塊</td>
+            <td>先下 Δ=16 那塊</td>
+          </tr>
+          <tr>
+            <td><strong>D-must</strong></td><td>強制先動之得分最高</td>
+            <td>「黑該下哪手最有利」</td>
+            <td>選 V_j 最大那 j</td>
+          </tr>
+          <tr>
+            <td><strong>D-avoid</strong></td><td>強制先動之得分最低</td>
+            <td>「黑絕不能下哪手」（誰下誰倒大楣）</td>
+            <td>選 V_j 最小那 j</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>四種定義在「乾淨 simple switch sum」裡，<strong>第 1 名相同</strong>（定理 F1）；但從第 2 名起會分歧——D-must 出現詭異的成對打平（定理 F2），D-avoid 之第 1 名甚至可與 C 之第 1 名差很遠（定理 F3）。</p>
+    </div>
+
+    <details class="layer">
+      <summary>形式化：D-must / D-avoid 的精確 V_j 公式</summary>
+      <div class="layer-content">
+        <p>設盤面分解 $\{R_i\}_{i=1}^m$，定義「黑強制先動 $R_j$ 之後續最佳對弈終值」：</p>
+        $$V_j = RS\Big( R_j^{L^*} + \sum_{i \neq j} R_i \Big), \quad R_j^{L^*} = \arg\max_{R_j^L} RS\big(R_j^L + \textstyle\sum_{i \neq j} R_i\big)$$
+        <p>對 simple switch $R_j = \{a_j \mid b_j\}$，$R_j^{L^*}$ 唯一為 $a_j$（一個 number），故：</p>
+        $$V_j = a_j + RS\Big( \sum_{i \neq j} R_i \Big)$$
+        <p>三讀法：</p>
+        <ul>
+          <li><strong>D-must</strong>：top-k by $V_j$ <em>descending</em>——「黑該下哪手最有利」。</li>
+          <li><strong>D-avoid</strong>：top-k by $V_j$ <em>ascending</em>——「黑絕不能下哪手」。</li>
+          <li><strong>D-sign-flipping</strong>：依 $|V_j - V_0|$ 排（$V_0$ = 無 first-move-constraint 之終值）；本研究將此讀法之 reduction 與算法列為開放問題（§9.4 #9）。</li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="chart-container" id="chart-four-best">
+      <h3>互動：4 種「最好」之排序對照</h3>
+      <p class="chart-hint">三塊空地：corridor 長 3（Δ=2）、corridor 長 5（Δ=1）、switch{8|−8}（Δ=16）。看 4 種定義之 top-3 名次，注意 F2 之成對 ties。</p>
+      <div class="chart-canvas"></div>
+    </div>
+  </section>
+
+  <!-- ===== §3 乾淨官子下能算 ===== -->
+  <section id="sec-clean-yose" class="theorem-section" data-nav="clean-yose">
+    <h2>§3 乾淨官子下，四步公式可解</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">「乾淨官子」= 滿足以下三個條件的盤面：</p>
+      <ol>
+        <li>不含劫</li>
+        <li>各塊空地互不影響（無共享氣、無跨區威脅）</li>
+        <li>每塊形狀屬於 BW 標準型（corridor / switch / 已成定地 / sente sequence ⋯）</li>
+      </ol>
+      <p>殘局後段大致都符合；中盤含戰鬥不適用。在乾淨官子下，最好一手有<strong>四步公式</strong>：</p>
+
+      <div class="highlight-box pass">
+        <strong>四步公式</strong>：
+        <ol style="padding-left:1.25rem; margin-top:0.5rem;">
+          <li>把空地切成 m 塊（不相連的 region）：$\{R_1, R_2, \ldots, R_m\}$。</li>
+          <li>對每塊算「先動 vs 後動得分差」 $\Delta_i = LS(R_i) - RS(R_i)$。</li>
+          <li>找 Δ 最大那塊 $R^*$。</li>
+          <li>答案 = $R^*$ 的關鍵點 $(x^*, y^*)$。</li>
+        </ol>
+      </div>
+
+      <p>常見形狀的 Δ 速查：</p>
+      <table class="cmp-table">
+        <thead><tr><th>形狀</th><th>$LS$（黑先得）</th><th>$RS$（白先得）</th><th>Δ</th><th>關鍵點</th></tr></thead>
+        <tbody>
+          <tr><td>Corridor 長 1</td><td class="num">1</td><td class="num">0</td><td class="num pass">1</td><td>唯一空點</td></tr>
+          <tr><td>Corridor 長 2</td><td class="num">2</td><td class="num">0</td><td class="num pass">2</td><td>開放端</td></tr>
+          <tr><td>Corridor 長 3</td><td class="num">3</td><td class="num">1</td><td class="num pass">2</td><td>開放端</td></tr>
+          <tr><td>Corridor 長 5</td><td class="num">5</td><td class="num">4</td><td class="num warn">1</td><td>開放端</td></tr>
+          <tr><td>Switch $\{a \mid b\}$</td><td class="num">$a$</td><td class="num">$b$</td><td class="num pass">$a-b$</td><td>該爭奪點本身</td></tr>
+          <tr><td>已成定地（number）</td><td class="num">$v$</td><td class="num">$v$</td><td class="num">0</td><td>不下</td></tr>
+        </tbody>
+      </table>
+
+      <p>整個算法的時間複雜度是 $O(n^2 + m \log m)$——盤面 $n \times n$ 走一次掃描，再對 m 塊排序。19×19 盤面瞬間完成。</p>
+    </div>
+
+    <div class="chart-container" id="chart-corridor">
+      <h3>互動：corridor 長度 vs Δ</h3>
+      <p class="chart-hint">拖動長度 ℓ，看 LS、RS、Δ 如何隨 ℓ 變化。corridor 公式：$LS(C_\ell) = \ell$，$RS(C_\ell) = \lfloor (\ell-1)^2/4 \rfloor$。</p>
+      <div class="chart-canvas"></div>
+      <div class="chart-controls">
+        <label>長度 ℓ:</label>
+        <input type="range" id="corridor-len" min="1" max="12" value="5">
+        <span class="val" id="corridor-len-val">5</span>
+      </div>
+    </div>
+
+    <details class="layer">
+      <summary>定理 B（受限上界）：完整陳述與算法</summary>
+      <div class="layer-content">
+        <p><strong>定理 B</strong>：在 (a)「BW 標準形狀 + ko-free + 局部可分解」或 (b) $|R_i| = O(1)$ 之 promise 下，BEST-MOVE-X 為 $O(n^2 + m \log m)$，X ∈ {B, C, D-must, D-avoid}。</p>
+        <p><strong>算法 2.3（D-must，最複雜的版本）</strong>：</p>
+        <ol>
+          <li>分解 $s$ 為 regions $\{R_i\}$（$O(n^2)$）。</li>
+          <li>對每塊 $R_i$ 由 BWFormula 算 $(LS_i, RS_i, T_i, \mu_i, m^*_i)$（$O(n^2)$）。</li>
+          <li>對 hot regions（$\Delta_i > 0$）依 Δ 降序排為 $\sigma$（$O(m \log m)$）。</li>
+          <li>預處理 4 個 prefix/suffix arrays（$O(m)$）：
+            <ul>
+              <li>$P_a^{\text{even}}[p] = \sum_{l \leq p, l \text{ even}} a_{\sigma(l)}$</li>
+              <li>$P_b^{\text{odd}}[p] = \sum_{l \leq p, l \text{ odd}} b_{\sigma(l)}$</li>
+              <li>$S_a^{\text{odd}}[p] = \sum_{l \geq p, l \text{ odd}} a_{\sigma(l)}$</li>
+              <li>$S_b^{\text{even}}[p] = \sum_{l \geq p, l \text{ even}} b_{\sigma(l)}$</li>
+            </ul>
+          </li>
+          <li>每個 $V_j$ 由 $O(1)$ 公式：
+            $$V_j = a_p + P_a^{\text{even}}[p-1] + P_b^{\text{odd}}[p-1] + S_a^{\text{odd}}[p+1] + S_b^{\text{even}}[p+1]$$
+            其中 $p = \sigma^{-1}(j)$。
+          </li>
+          <li>對 $V_j$ 排序得 $\pi$，回傳 top-k regions 與其 $m^*$。</li>
+        </ol>
+        <p><strong>正確性</strong>：由引理 H（hotstrat-on-switches）之 saddle-point 對弈序列保證；prefix-sums 公式為其 closed-form 求和。</p>
+      </div>
+    </details>
+
+    <details class="layer">
+      <summary>m=3 數值驗算</summary>
+      <div class="layer-content">
+        <p>$\Delta = (10, 8, 6)$，$\mu_i = 0$，故 $(a_l, b_l) = (5, -5), (4, -4), (3, -3)$。</p>
+        <p>預處理：</p>
+        <ul style="font-family:monospace; font-size:var(--text-xs);">
+          <li>$P_a^{\text{even}}: [0, 0, 4, 4]$</li>
+          <li>$P_b^{\text{odd}}: [0, -5, -5, -8]$</li>
+          <li>$S_a^{\text{odd}}: [\_, 8, 3, 3, 0]$</li>
+          <li>$S_b^{\text{even}}: [\_, -4, -4, 0, 0]$</li>
+        </ul>
+        <p>計算：</p>
+        <ul>
+          <li>$V_1 = 5 + 0 + 0 + 3 + (-4) = 4$ ✓</li>
+          <li>$V_2 = 4 + 0 + (-5) + 3 + 0 = 2$ ✓</li>
+          <li>$V_3 = 3 + 4 + (-5) + 0 + 0 = 2$ ✓ （$V_2 = V_3$，符合 F2）</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== §4 一般情況算不動 ===== -->
+  <section id="sec-pspace" class="theorem-section" data-nav="pspace">
+    <h2>§4 一般情況下，電腦永遠算不快（PSPACE-hard）</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">如果把「乾淨官子」的條件拿掉，問題會變得有多難？答案是：<strong>PSPACE-hard</strong>。</p>
+      <p><strong>白話翻譯</strong>：PSPACE-hard 大致等於「電腦永遠算不快」——它是計算複雜度階層裡比 NP-hard 還難的一級。直觀來說，要解這類問題的最快算法，在最壞情況下需要的時間隨盤面大小指數爆炸增長，且這個下界已被證明在合理假設下無法繞過。</p>
+      <p>所以圍棋官子最好一手的真實面貌是：</p>
+      <div class="highlight-box warn">
+        <ul style="margin:0; padding-left:1.25rem;">
+          <li><strong>乾淨官子</strong>：四步公式 $O(n^2 + m \log m)$，瞬間完成 ✓</li>
+          <li><strong>一般情況</strong>：PSPACE-hard，電腦永遠算不快 ✗</li>
+        </ul>
+      </div>
+      <p>兩個答案都對——重點是「乾淨」這個 promise 是否成立。實戰中，殘局後段通常乾淨；中盤含戰鬥則不乾淨。</p>
+    </div>
+
+    <details class="layer">
+      <summary>定理 A：BEST-MOVE-X 為 PSPACE-hard，X ∈ {B, C, D-must, D-avoid}</summary>
+      <div class="layer-content">
+        <p><strong>陳述</strong>：在「局部可分解」promise 下，對 X ∈ {B, C, D-must, D-avoid}，BEST-MOVE-X 為 PSPACE-hard。</p>
+        <p><strong>證明骨架</strong>：從 Generalized Ladder Game (GLG) 之 PSPACE-completeness（Crâșmaru &amp; Tromp 2000）reduce。每個 GLG instance $(B, s_0)$ 對應一個 BEST-MOVE-X instance。</p>
+        <p><strong>關鍵：Lemma A.1（Swing 控制）</strong>。給定 GLG instance，建構 region $R_\Phi$（含 ladder 嵌入 + swing booster gadget）使：</p>
+        <ul>
+          <li>GLG = YES：$\Delta(R_\Phi) = D_Y = 6k$（其中 $k$ 為 ladder chase 長度，$|B|$ 之多項式）</li>
+          <li>GLG = NO：$\Delta(R_\Phi) = D_N \leq 4$</li>
+        </ul>
+        <p>故 $D_Y - D_N \geq 6k - 4 = \Omega(|B|)$，可 polynomial 校準。再加上一塊 calibration switch $R_*$，使「Δ 最大者 = $R_\Phi$」⟺ GLG = YES。</p>
+        <p>此 reduction 對 X ∈ {B, C, D-must, D-avoid} 共用一個建構（每個 X 各有校準參數）。</p>
+        <p>(D-sign-flipping 之 reduction 因 baseline $V_0$ 之循環依賴問題列為開放問題。)</p>
+      </div>
+    </details>
+
+    <details class="layer">
+      <summary>為什麼 PSPACE-hard 直觀上「電腦永遠算不快」？</summary>
+      <div class="layer-content">
+        <p>計算複雜度階層大致：P ⊆ NP ⊆ PSPACE ⊆ EXPTIME。</p>
+        <ul>
+          <li><strong>P</strong>：多項式時間可解（電腦算得快）</li>
+          <li><strong>NP-hard</strong>：至少跟「找答案不知怎麼找、但檢驗答案很快」之最難問題一樣難</li>
+          <li><strong>PSPACE-hard</strong>：至少跟「QBF（量化邏輯式滿足性）」一樣難——QBF 是 $\exists x_1 \forall x_2 \exists x_3 \cdots$ 之嵌套交替量化，本質上是「我必須對所有對手回應都有對策」之博弈問題</li>
+          <li><strong>EXPTIME-complete</strong>：n×n 圍棋全局（不限官子）已知為 EXPTIME-complete（Robson 1983）</li>
+        </ul>
+        <p>本研究的官子問題卡在 PSPACE-hard 而非 EXPTIME——比全局簡單一些，但仍然超出 NP，超出多項式時間。實務上 PSPACE-hard 問題通常用 heuristic（如 KataGo）而非保證最優算法。</p>
+      </div>
+    </details>
+
+    <div class="chart-container" id="chart-complexity">
+      <h3>計算複雜度階層</h3>
+      <p class="chart-hint">本研究的位置（紅點）：BEST-MOVE-X 在乾淨 promise 下是 P，去掉 promise 是 PSPACE-hard。對比：圍棋全局（不限官子）是 EXPTIME-complete。</p>
+      <div class="chart-canvas"></div>
+    </div>
+  </section>
+
+  <!-- ===== §5 Hotstrat 失效 ===== -->
+  <section id="sec-hotstrat-fail" class="theorem-section" data-nav="hotstrat-fail">
+    <h2>§5 「先下大的」失效：定理 D 之顯式反例</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">考慮兩塊：$P = G + H$，其中</p>
+      <ul>
+        <li>$G = \{10 \mid \{0 \mid -100\}\}$——B 先下得 10 目；W 先下會威脅 B 的大塊死活，B 最佳防守仍要損 0 目，否則全死損 100 目。<strong>溫度 $T(G) = 10$</strong>。</li>
+        <li>$H = \{8 \mid -8\}$——simple switch，B 先得 8 目、W 先得 −8 目。<strong>溫度 $T(H) = 8$</strong>。</li>
+      </ul>
+
+      <p><strong>「先下大的」預言</strong>：$T(G) = 10 > T(H) = 8$，所以下 G。</p>
+      <p><strong>實際最佳對弈</strong>：B 應該下 H！</p>
+
+      <div class="stat-line">
+        <div class="stat-badge">B 下 G 之終局：<span class="stat-value" style="color:var(--color-fail);">2 目</span></div>
+        <div class="stat-badge">B 下 H 之終局：<span class="stat-value" style="color:var(--color-pass);">8 目</span></div>
+        <div class="stat-badge">「先下大的」之損失：<span class="stat-value" style="color:var(--color-fail);">−6 目</span></div>
+      </div>
+
+      <p>原因：B 下 G 取 10 目後，W 反擊 H 得 −8，淨 +2；但 B 下 H 取 8 目後，W 動 G 之 follow-up，B 補後仍保持 0，淨 +8。「先下大的」害你輸 6 目。</p>
+
+      <p><strong>關鍵啟示</strong>：當某塊有 hot follow-up（例：大塊死活、sente sequence），溫度排序不再對應最佳對弈。實戰中「對方反擊比我搶到的更大」就是這個現象。</p>
+    </div>
+
+    <div class="chart-container" id="chart-hotstrat">
+      <h3>互動：G+H 之完整對弈樹</h3>
+      <p class="chart-hint">點擊任一節點看 B/W 在該位置之選擇與終局值。紅色=Hotstrat 預言路徑；綠色=最佳對弈路徑。</p>
+      <div class="chart-canvas"></div>
+    </div>
+
+    <details class="layer">
+      <summary>定理 D：完整 LS(P) 計算</summary>
+      <div class="layer-content">
+        <p><strong>$P = G + H$ 之 L-options（B 動）</strong>：</p>
+        <ul>
+          <li>$L_1$: B 動 $G^L = 10$ → $P^{L_1} = 10 + H$</li>
+          <li>$L_2$: B 動 $H^L = 8$ → $P^{L_2} = G + 8$</li>
+        </ul>
+        <p><strong>$RS(P^{L_1}) = RS(10 + H)$</strong>：W 動 $H^R = -8$ → 終值 = $10 + (-8) = 2$。</p>
+        <p><strong>$RS(P^{L_2}) = RS(G + 8)$</strong>：W 動 $G^R = Y = \{0 \mid -100\}$ → $LS(Y + 8) = LS(Y) + 8 = 0 + 8 = 8$。</p>
+        <p>故 $LS(P) = \max\{2, 8\} = 8$，最佳第一手為 $L_2$（動 $H$）。</p>
+        <p><strong>Hotstrat 衝突</strong>：$T(G) = 10 > T(H) = 8$ 預言動 $G$ → 終值 2，比最佳少 6 目。✓</p>
+        <p><strong>C 與 D-must 給出正確答案</strong>：$\Delta(G) = 10$, $\Delta(H) = 16$ → C-top-1 = $H$ ✓；$V_G = 2, V_H = 8$ → D-must-top-1 = $H$ ✓。</p>
+      </div>
+    </details>
+
+    <details class="layer">
+      <summary>19×19 物理棋盤實現</summary>
+      <div class="layer-content">
+        <p>抽象 CGT 反例 $G + H$ 可在 19×19 實現：</p>
+        <ul>
+          <li><strong>$H$ 之實現</strong>：右下角 1×16 corridor，雙端對方活子封閉，調 $\ell$ 使 $\Delta = 16$。</li>
+          <li><strong>$Y = \{0 \mid -100\}$ 之實現</strong>：左上角構造一個未活的黑大塊（約 50 子），含 100 目地之潛在地盤。B 補一手做活得 0；W 動關鍵點殺死大塊，B 損 100 目。</li>
+          <li><strong>$G = \{10 \mid Y\}$ 之實現</strong>：右上角中型半實地，含 follow-up 結構。B 取 10 目地（保 follow-up 之選擇權）；W 引發 $Y$ 之活死競爭。</li>
+        </ul>
+        <p>三塊位於不同角落，相距 ≥ 5 子，氣不互動。具體棋形需 tsumego solver 驗證精確死活，但結構性反例不依賴此細節（per BW 1994 Ch. 4 之 mixed-sum examples）。</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== §6 D-must 之成對 ties ===== -->
+  <section id="sec-paired-ties" class="theorem-section" data-nav="paired-ties">
+    <h2>§6 D-must 之詭異「成對打平」（定理 F2）</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">考慮 m 塊乾淨 simple switch 之和。我們發現一個結構性現象：</p>
+
+      <div class="highlight-box pass">
+        <strong>定理 F2</strong>：對所有 $k \geq 1$ with $2k+1 \leq m$，
+        $$V_{\sigma(2k)} = V_{\sigma(2k+1)}$$
+        即 D-must 排序之第 2 名與第 3 名、第 4 名與第 5 名、... <strong>必定打平</strong>。
+      </div>
+
+      <p>這不是巧合，是「對弈序列項對換」之代數結構強迫。具體地，當你「強制 B 先動 $\sigma(2k)$」 vs「強制 B 先動 $\sigma(2k+1)$」時，後續的對弈序列差異剛好抵消，所以兩個 V 值相同。</p>
+
+      <p><strong>具體例（m=3）</strong>：$\Delta = (10, 8, 6)$，$\mu_i = 0$，$(a_i, b_i) = (5, -5), (4, -4), (3, -3)$：</p>
+      <ul>
+        <li>$V_1 = 5 - 4 + 3 = 4$</li>
+        <li>$V_2 = 4 - 5 + 3 = 2$</li>
+        <li>$V_3 = 3 - 5 + 4 = 2$ （= $V_2$！）</li>
+      </ul>
+
+      <p><strong>意涵</strong>：D-must 排序為 $\sigma(1) > \{\sigma(2), \sigma(3)\} > \{\sigma(4), \sigma(5)\} > \cdots$（成對 ties from position 2）；而 C 排序為 strict $\sigma(1) > \sigma(2) > \sigma(3) > \cdots$。<strong>兩個 ranking 結構性不同</strong>。</p>
+    </div>
+
+    <div class="chart-container" id="chart-pairs">
+      <h3>互動：m 變化下之 V_j 排序</h3>
+      <p class="chart-hint">拖動 m，看 V_j 之分布如何呈現「成對 ties」之階梯結構。</p>
+      <div class="chart-canvas"></div>
+      <div class="chart-controls">
+        <label>region 數 m:</label>
+        <input type="range" id="pairs-m" min="3" max="9" value="5">
+        <span class="val" id="pairs-m-val">5</span>
+      </div>
+    </div>
+
+    <details class="layer">
+      <summary>定理 F2 之證明（adjacent-swap 代數計算）</summary>
+      <div class="layer-content">
+        <p>由 §3 算法 2.3 之 prefix-sums 公式，$V_{\sigma(p)}$ 之 closed-form 為：</p>
+        $$V_{\sigma(p)} = a_{\sigma(p)} + \sum_{l=1}^{p-1} \begin{cases} a_{\sigma(l)} & l \text{ even} \\ b_{\sigma(l)} & l \text{ odd} \end{cases} + \sum_{l=p+1}^{m} \begin{cases} a_{\sigma(l)} & l \text{ odd} \\ b_{\sigma(l)} & l \text{ even} \end{cases}$$
+        <p>對 $p = 2k$ 與 $p = 2k+1$ 比較：</p>
+        <ul>
+          <li>Prefix 差：$V_{\sigma(2k+1)}$ 之 prefix 多一項 $l = 2k$ even → $a_{\sigma(2k)}$；故 prefix 差 = $-a_{\sigma(2k)}$。</li>
+          <li>Suffix 差：$V_{\sigma(2k)}$ 之 suffix 多一項 $l = 2k+1$ odd → $a_{\sigma(2k+1)}$；故 suffix 差 = $+a_{\sigma(2k+1)}$。</li>
+        </ul>
+        <p>加總：
+          $$V_{\sigma(2k)} - V_{\sigma(2k+1)} = (a_{\sigma(2k)} - a_{\sigma(2k+1)}) - a_{\sigma(2k)} + a_{\sigma(2k+1)} = 0$$
+        </p>
+        <p>故 $V_{\sigma(2k)} = V_{\sigma(2k+1)}$。✓ ($\square$)</p>
+      </div>
+    </details>
+
+    <details class="layer">
+      <summary>F1 與 F3：四種定義之 top-1 何時相同、何時不同</summary>
+      <div class="layer-content">
+        <p><strong>定理 F1</strong>（C-top-1 = D-must-top-1, sum-of-simple-switches）：對 sum of $m$ non-degenerate simple switches，$\arg\max_j \Delta_j = \arg\max_j V_j$。即「先動 vs 後動差最大那塊」與「強制黑先動之得分最高那塊」<strong>第 1 名相同</strong>。</p>
+        <p><strong>定理 F3</strong>（C-top-1 ≠ D-avoid-top-1, substantive 分歧）：構造盤面使「Δ 最大那塊」與「絕不能下那塊」<strong>嚴格不同</strong>。例：$m = 3$ switches with $\Delta = (10, 8, 6)$，C-top-1 = $\sigma(1)$，D-avoid-top-1 = $\sigma(2)$ 或 $\sigma(3)$（V 最小者），兩者區分性可達 $\Omega(\Delta_1)$ 目。</p>
+        <p>故四種定義之關係：</p>
+        <ul>
+          <li>top-1 上：B = C = D-must（在 simple switch sum 下，per F1）</li>
+          <li>top-1 上：D-avoid 可與 C 不同（per F3）</li>
+          <li>full ranking 上：D-must 出現成對 ties（per F2），C 為 strict</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ===== §7 想看完整證明 ===== -->
+  <section id="sec-deep" class="theorem-section" data-nav="deep">
+    <h2>§7 想看完整證明 / 跑工具？</h2>
+
+    <div class="layer-intuition">
+      <p class="lead">本頁是給高中生 / 圍棋愛好者的入門版。完整內容依深度分層：</p>
+
+      <table class="cmp-table">
+        <thead><tr><th>想看什麼</th><th>看哪份</th><th>難度</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>一頁 cheatsheet（最簡）</td>
+            <td><a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation/blob/main/practical.md" target="_blank" rel="noopener">practical.md</a></td>
+            <td>圍棋常識即可</td>
+          </tr>
+          <tr>
+            <td>純數學公式（函數合成）</td>
+            <td><a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation/blob/main/math-solution.md" target="_blank" rel="noopener">math-solution.md</a></td>
+            <td>高中數學 + 一點 CGT 直覺</td>
+          </tr>
+          <tr>
+            <td>完整算法（含 pseudocode）</td>
+            <td><a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation/blob/main/algorithm.md" target="_blank" rel="noopener">algorithm.md</a></td>
+            <td>大學算法課</td>
+          </tr>
+          <tr>
+            <td>完整證明（PSPACE-hardness 等）</td>
+            <td><a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation/blob/main/proof.md" target="_blank" rel="noopener">proof.md</a></td>
+            <td>研究生 CS / CGT</td>
+          </tr>
+          <tr>
+            <td>學術論文 A（PSPACE 困難 + 算法）</td>
+            <td><a href="paper-a/paper.pdf" target="_blank" rel="noopener">paper-a/paper.pdf</a> · 7 頁</td>
+            <td>cs.CC / cs.GT 專業</td>
+          </tr>
+          <tr>
+            <td>學術論文 B（Hotstrat 失效）</td>
+            <td><a href="paper-b/paper.pdf" target="_blank" rel="noopener">paper-b/paper.pdf</a> · 7 頁</td>
+            <td>math.CO / cs.GT 專業</td>
+          </tr>
+          <tr>
+            <td>互動工具（輸入盤面算最佳一手）</td>
+            <td><a href="tool.html" target="_blank" rel="noopener">tool.html</a></td>
+            <td>會操作網頁即可</td>
+          </tr>
+          <tr>
+            <td>Python / JavaScript 程式碼</td>
+            <td><a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation" target="_blank" rel="noopener">GitHub repo</a></td>
+            <td>會跑程式即可</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>歡迎到 <a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation" target="_blank" rel="noopener">GitHub</a> 提 issue / PR，或用每段右上角的「複製到 AI」按鈕，把該段貼給 ChatGPT / Claude 接續討論。</p>
+    </div>
+
+    <details class="layer">
+      <summary>本研究之 5 個未解問題（邀請合作）</summary>
+      <div class="layer-content">
+        <p>研究記錄了若干開放問題（per proof.md §9.4），擇要列出：</p>
+        <ol>
+          <li><strong>D-sign-flipping 之 reduction</strong>：baseline $V_0$ 之循環依賴問題未解。</li>
+          <li><strong>BW 標準形狀之經驗覆蓋率</strong>：實戰 19×19 終局多大比例真的乾淨？需收集 KGS / GoQuest 終局資料統計。</li>
+          <li><strong>Hotstrat 失效之 worst-case 上界</strong>：本研究給出 6 目顯式反例；最壞情況下 Hotstrat 可損多少目？</li>
+          <li><strong>結構性 ties (F2) 之擴展</strong>：能否擴到 corridor sums 或一般 BW 標準形狀？</li>
+          <li><strong>含劫之 quasi-polynomial 算法</strong>：本研究排除 ko；含 ko 但 ko 數 $O(\log n)$ 之上下界？</li>
+        </ol>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  <p>本頁面源碼與內容開源 · MIT License</p>
+  <p>
+    <a href="https://github.com/weiqi-kids/go-yose-optimal-move-computation" target="_blank" rel="noopener">GitHub Repository ↗</a>
+    ·
+    <a href="paper-a/paper.pdf" target="_blank" rel="noopener">Paper A PDF</a>
+    ·
+    <a href="paper-b/paper.pdf" target="_blank" rel="noopener">Paper B PDF</a>
+    ·
+    <a href="tool.html">互動工具</a>
+  </p>
+  <p>
+    <small>Author: weiqi.kids · 主題：圍棋官子 · CGT · 計算複雜度</small>
+  </p>
+</footer>
+
+<script>
+// === KaTeX render ===
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$',  right: '$',  display: false}
+      ],
+      throwOnError: false
+    });
+  }
+});
+
+// === Active nav highlighting (IntersectionObserver) ===
+(function () {
+  const navLinks = document.querySelectorAll('#logic-map a[href^="#"]');
+  const sections = Array.from(document.querySelectorAll('section[id]'));
+  const linkById = {};
+  navLinks.forEach(l => {
+    const id = l.getAttribute('href').slice(1);
+    linkById[id] = l;
+  });
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = linkById[e.target.id];
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  sections.forEach(s => obs.observe(s));
+})();
+
+// === Chart Registry ===
+const chartRegistry = {};
+
+function defineChart(id, mountFn) {
+  chartRegistry[id] = { mount: mountFn, mounted: false };
+}
+
+function getColor(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim() || '#1e5ab8';
+}
+
+// === Chart 1: 4 種「最好」之排序對照 ===
+defineChart('chart-four-best', (container) => {
+  const canvas = container.querySelector('.chart-canvas');
+  // Three regions: corridor 3, corridor 5, switch{8|-8}
+  const regions = [
+    { name: 'corridor ℓ=3', LS: 3, RS: 1, T: 1, delta: 2 },
+    { name: 'corridor ℓ=5', LS: 5, RS: 4, T: 0.5, delta: 1 },
+    { name: 'switch{8|−8}', LS: 8, RS: -8, T: 8, delta: 16 },
+  ];
+  // Pre-computed (algorithm 2.3 with sigma sorted by delta desc):
+  // V values per region (per math-solution §8 example):
+  const Vs = { 'switch{8|−8}': 14, 'corridor ℓ=3': 0, 'corridor ℓ=5': 0 };
+  const rankings = {
+    'B (溫度)':       [...regions].sort((a, b) => b.T - a.T).map(r => r.name),
+    'C (swing Δ)':    [...regions].sort((a, b) => b.delta - a.delta).map(r => r.name),
+    'D-must (V↓)':    [...regions].sort((a, b) => Vs[b.name] - Vs[a.name]).map(r => r.name),
+    'D-avoid (V↑)':   [...regions].sort((a, b) => Vs[a.name] - Vs[b.name]).map(r => r.name),
+  };
+  const w = canvas.clientWidth || 600;
+  const h = 280;
+  const margin = { top: 30, right: 20, bottom: 30, left: 110 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+  const svg = d3.select(canvas).append('svg').attr('viewBox', `0 0 ${w} ${h}`);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+  const x = d3.scaleBand().domain(['top-1', 'top-2', 'top-3']).range([0, innerW]).padding(0.2);
+  const y = d3.scaleBand().domain(Object.keys(rankings)).range([0, innerH]).padding(0.2);
+  const colorByName = d3.scaleOrdinal().domain(regions.map(r => r.name))
+    .range([getColor('color-pass'), getColor('color-info'), getColor('color-high')]);
+
+  // Header
+  g.append('g').selectAll('text.header').data(x.domain()).enter()
+    .append('text').attr('class', 'header')
+    .attr('x', d => x(d) + x.bandwidth() / 2).attr('y', -10)
+    .attr('text-anchor', 'middle').style('font-size', '13px').style('font-weight', '700')
+    .text(d => d);
+
+  // Row labels
+  g.append('g').selectAll('text.row').data(y.domain()).enter()
+    .append('text').attr('class', 'row')
+    .attr('x', -8).attr('y', d => y(d) + y.bandwidth() / 2 + 5)
+    .attr('text-anchor', 'end').style('font-size', '13px')
+    .text(d => d);
+
+  // Cells
+  Object.entries(rankings).forEach(([row, ranks]) => {
+    ranks.forEach((name, i) => {
+      g.append('rect')
+        .attr('x', x('top-' + (i + 1))).attr('y', y(row))
+        .attr('width', x.bandwidth()).attr('height', y.bandwidth())
+        .attr('fill', colorByName(name)).attr('opacity', 0.85)
+        .attr('rx', 4);
+      g.append('text')
+        .attr('x', x('top-' + (i + 1)) + x.bandwidth() / 2)
+        .attr('y', y(row) + y.bandwidth() / 2 + 5)
+        .attr('text-anchor', 'middle').style('font-size', '12px').style('font-weight', '600')
+        .style('fill', '#fff')
+        .text(name);
+    });
+  });
+});
+
+// === Chart 2: corridor 長度 vs Δ ===
+defineChart('chart-corridor', (container) => {
+  const canvas = container.querySelector('.chart-canvas');
+  const slider = container.querySelector('#corridor-len');
+  const valEl = container.querySelector('#corridor-len-val');
+
+  const w = canvas.clientWidth || 600;
+  const h = 260;
+  const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+  const svg = d3.select(canvas).append('svg').attr('viewBox', `0 0 ${w} ${h}`);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const lengths = d3.range(1, 13);
+  const RS = ell => Math.floor((ell - 1) ** 2 / 4);
+  const data = lengths.map(ell => ({
+    ell,
+    LS: ell,
+    RS: RS(ell),
+    delta: ell - RS(ell)
+  }));
+  const x = d3.scaleBand().domain(lengths).range([0, innerW]).padding(0.2);
+  const y = d3.scaleLinear().domain([0, d3.max(data, d => Math.max(d.LS, d.delta))]).nice().range([innerH, 0]);
+
+  g.append('g').attr('transform', `translate(0,${innerH})`)
+    .call(d3.axisBottom(x).tickFormat(d => d))
+    .selectAll('text').style('font-size', '11px');
+  g.append('text').attr('x', innerW / 2).attr('y', innerH + 35)
+    .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', getColor('text-secondary'))
+    .text('corridor 長度 ℓ');
+
+  g.append('g').call(d3.axisLeft(y).ticks(6)).selectAll('text').style('font-size', '11px');
+  g.append('text').attr('x', -innerH / 2).attr('y', -35).attr('transform', 'rotate(-90)')
+    .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', getColor('text-secondary'))
+    .text('目數');
+
+  // Bars: LS, RS, delta as grouped
+  const bw = x.bandwidth() / 3;
+  const groups = [
+    { key: 'LS', color: getColor('color-pass'), offset: 0 },
+    { key: 'RS', color: getColor('color-info'), offset: bw },
+    { key: 'delta', color: getColor('color-high'), offset: 2 * bw, label: 'Δ' },
+  ];
+  groups.forEach(grp => {
+    g.append('g').selectAll('rect.' + grp.key).data(data).enter()
+      .append('rect').attr('class', grp.key)
+      .attr('x', d => x(d.ell) + grp.offset).attr('y', d => y(d[grp.key]))
+      .attr('width', bw).attr('height', d => innerH - y(d[grp.key]))
+      .attr('fill', grp.color);
+  });
+
+  // Highlight selected length
+  let highlight = g.append('rect').attr('y', 0).attr('height', innerH)
+    .attr('fill', 'none').attr('stroke', getColor('color-critical'))
+    .attr('stroke-width', 2).attr('rx', 2);
+
+  // Legend
+  const lg = g.append('g').attr('transform', `translate(${innerW - 180}, 4)`);
+  groups.forEach((grp, i) => {
+    lg.append('rect').attr('x', i * 60).attr('y', 0).attr('width', 10).attr('height', 10).attr('fill', grp.color);
+    lg.append('text').attr('x', i * 60 + 14).attr('y', 9).style('font-size', '11px').text(grp.label || grp.key);
+  });
+
+  function updateHighlight(ell) {
+    highlight
+      .attr('x', x(ell))
+      .attr('width', x.bandwidth());
+    valEl.textContent = ell;
+  }
+  slider.addEventListener('input', e => updateHighlight(+e.target.value));
+  updateHighlight(+slider.value);
+});
+
+// === Chart 3: 計算複雜度階層 ===
+defineChart('chart-complexity', (container) => {
+  const canvas = container.querySelector('.chart-canvas');
+  const w = canvas.clientWidth || 600;
+  const h = 260;
+  const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+  const svg = d3.select(canvas).append('svg').attr('viewBox', `0 0 ${w} ${h}`);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Concentric rectangles for P ⊆ NP ⊆ PSPACE ⊆ EXPTIME
+  const layers = [
+    { name: 'EXPTIME-complete (n×n Go 全局, Robson 1983)', w: 1.0, color: getColor('color-overlay') || '#dfe0e5' },
+    { name: 'PSPACE', w: 0.78, color: getColor('color-warn') },
+    { name: 'NP', w: 0.55, color: getColor('color-info') },
+    { name: 'P', w: 0.32, color: getColor('color-pass') },
+  ];
+  const cx = innerW / 2, cy = innerH / 2;
+  layers.forEach(l => {
+    const rw = innerW * l.w;
+    const rh = innerH * l.w;
+    g.append('rect')
+      .attr('x', cx - rw / 2).attr('y', cy - rh / 2)
+      .attr('width', rw).attr('height', rh)
+      .attr('fill', l.color).attr('opacity', 0.6).attr('rx', 8);
+    g.append('text').attr('x', cx).attr('y', cy - rh / 2 + 14)
+      .attr('text-anchor', 'middle').style('font-size', '11px').style('font-weight', '600')
+      .style('fill', '#fff').text(l.name);
+  });
+
+  // Red dot: BEST-MOVE-X (PSPACE-hard)
+  const dot1x = cx - innerW * 0.78 / 2 + 30;
+  const dot1y = cy + 30;
+  g.append('circle').attr('cx', dot1x).attr('cy', dot1y).attr('r', 7).attr('fill', getColor('color-critical'));
+  g.append('text').attr('x', dot1x + 12).attr('y', dot1y + 4).style('font-size', '12px').style('font-weight', '600')
+    .text('BEST-MOVE-X (PSPACE-hard, 一般)');
+
+  // Green dot: BEST-MOVE-X under clean promise (P)
+  const dot2x = cx - innerW * 0.32 / 2 + 20;
+  const dot2y = cy - 10;
+  g.append('circle').attr('cx', dot2x).attr('cy', dot2y).attr('r', 7).attr('fill', getColor('color-pass'));
+  g.append('text').attr('x', dot2x + 12).attr('y', dot2y + 4).style('font-size', '12px').style('font-weight', '600').style('fill', '#fff')
+    .text('BEST-MOVE-X (乾淨, P)');
+});
+
+// === Chart 4: G+H 對弈樹 ===
+defineChart('chart-hotstrat', (container) => {
+  const canvas = container.querySelector('.chart-canvas');
+  const w = canvas.clientWidth || 600;
+  const h = 360;
+  const svg = d3.select(canvas).append('svg').attr('viewBox', `0 0 ${w} ${h}`);
+  const g = svg.append('g').attr('transform', 'translate(20, 20)');
+
+  const tree = {
+    name: 'P = G + H', sub: 'B 動', value: 'LS(P)=8',
+    children: [
+      {
+        name: 'B 動 G^L=10', sub: '→ 10 + H', value: 'RS = 2', bad: true,
+        children: [
+          { name: 'W 動 H^R=-8', sub: '→ 10 + (-8)', value: '= 2', bad: true }
+        ]
+      },
+      {
+        name: 'B 動 H^L=8', sub: '→ G + 8', value: 'RS = 8', good: true,
+        children: [
+          {
+            name: 'W 動 G^R=Y', sub: '→ Y + 8', value: '= LS(Y)+8',
+            children: [
+              { name: 'B 動 Y^L=0', sub: '→ 0 + 8', value: '= 8', good: true }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  const root = d3.hierarchy(tree);
+  const treeLayout = d3.tree().size([w - 40, h - 80]);
+  treeLayout(root);
+
+  // Links
+  g.append('g').selectAll('path').data(root.links()).enter()
+    .append('path')
+    .attr('d', d3.linkVertical().x(d => d.x).y(d => d.y))
+    .attr('fill', 'none')
+    .attr('stroke', d => d.target.data.bad ? getColor('color-fail') : (d.target.data.good ? getColor('color-pass') : getColor('text-muted')))
+    .attr('stroke-width', d => d.target.data.bad || d.target.data.good ? 2.5 : 1.5)
+    .attr('opacity', 0.85);
+
+  // Nodes
+  const nodes = g.append('g').selectAll('g.node').data(root.descendants()).enter()
+    .append('g').attr('class', 'node')
+    .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+  nodes.append('rect')
+    .attr('x', -75).attr('y', -22).attr('width', 150).attr('height', 44)
+    .attr('rx', 4)
+    .attr('fill', d => d.data.bad ? getColor('color-fail') : (d.data.good ? getColor('color-pass') : getColor('bg-overlay')))
+    .attr('opacity', 0.9)
+    .attr('stroke', getColor('border-subtle'));
+
+  nodes.append('text').attr('y', -6).attr('text-anchor', 'middle')
+    .style('font-size', '11px').style('font-weight', '700')
+    .style('fill', d => d.data.bad || d.data.good ? '#fff' : getColor('text-primary'))
+    .text(d => d.data.name);
+
+  nodes.append('text').attr('y', 8).attr('text-anchor', 'middle')
+    .style('font-size', '10px')
+    .style('fill', d => d.data.bad || d.data.good ? '#fff' : getColor('text-secondary'))
+    .text(d => d.data.sub || '');
+
+  nodes.append('text').attr('y', 19).attr('text-anchor', 'middle')
+    .style('font-size', '10px').style('font-weight', '600')
+    .style('fill', d => d.data.bad || d.data.good ? '#fff' : getColor('text-primary'))
+    .text(d => d.data.value || '');
+
+  // Legend
+  const lg = svg.append('g').attr('transform', `translate(20, ${h - 25})`);
+  [
+    { color: getColor('color-fail'), label: 'Hotstrat 路徑（差 6 目）' },
+    { color: getColor('color-pass'), label: '最佳對弈路徑' }
+  ].forEach((item, i) => {
+    lg.append('rect').attr('x', i * 220).attr('y', 0).attr('width', 12).attr('height', 12)
+      .attr('fill', item.color).attr('opacity', 0.9);
+    lg.append('text').attr('x', i * 220 + 16).attr('y', 10)
+      .style('font-size', '11px').text(item.label);
+  });
+});
+
+// === Chart 5: m 變化下之 V_j 排序 ===
+defineChart('chart-pairs', (container) => {
+  const canvas = container.querySelector('.chart-canvas');
+  const slider = container.querySelector('#pairs-m');
+  const valEl = container.querySelector('#pairs-m-val');
+
+  const w = canvas.clientWidth || 600;
+  const h = 280;
+  const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+  const svg = d3.select(canvas).append('svg').attr('viewBox', `0 0 ${w} ${h}`);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // x axis label
+  g.append('text').attr('x', innerW / 2).attr('y', innerH + 35)
+    .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', getColor('text-secondary'))
+    .text('排名 p（依 σ 由 Δ 降序）');
+  g.append('text').attr('x', -innerH / 2).attr('y', -35).attr('transform', 'rotate(-90)')
+    .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', getColor('text-secondary'))
+    .text('V_σ(p) 值');
+
+  function computeVs(m) {
+    // Symmetric simple switches: Δ_i = 2*(m - i + 2), μ_i = 0
+    const deltas = d3.range(1, m + 1).map(i => 2 * (m - i + 2));
+    const a = deltas.map(d => d / 2);
+    const b = deltas.map(d => -d / 2);
+    // V_p = a_p + sum_{l<p, l even} a_l + sum_{l<p, l odd} b_l
+    //         + sum_{l>p, l odd} a_l + sum_{l>p, l even} b_l
+    // (Using 1-based l)
+    const Vs = [];
+    for (let p = 1; p <= m; p++) {
+      let v = a[p - 1];
+      for (let l = 1; l < p; l++) {
+        if (l % 2 === 0) v += a[l - 1];
+        else v += b[l - 1];
+      }
+      for (let l = p + 1; l <= m; l++) {
+        if (l % 2 === 1) v += a[l - 1];
+        else v += b[l - 1];
+      }
+      Vs.push(v);
+    }
+    return Vs;
+  }
+
+  const xAxisG = g.append('g').attr('transform', `translate(0,${innerH})`);
+  const yAxisG = g.append('g');
+
+  function update(m) {
+    valEl.textContent = m;
+    const Vs = computeVs(m);
+    const x = d3.scaleBand().domain(d3.range(1, m + 1)).range([0, innerW]).padding(0.15);
+    const y = d3.scaleLinear().domain([d3.min(Vs) - 1, d3.max(Vs) + 1]).range([innerH, 0]);
+
+    xAxisG.call(d3.axisBottom(x).tickFormat(d => 'σ(' + d + ')')).selectAll('text').style('font-size', '11px');
+    yAxisG.call(d3.axisLeft(y).ticks(6)).selectAll('text').style('font-size', '11px');
+
+    const bars = g.selectAll('rect.bar').data(Vs);
+    bars.enter().append('rect').attr('class', 'bar')
+      .merge(bars)
+      .attr('x', (d, i) => x(i + 1))
+      .attr('y', d => d >= 0 ? y(d) : y(0))
+      .attr('width', x.bandwidth())
+      .attr('height', d => Math.abs(y(d) - y(0)))
+      .attr('fill', (d, i) => {
+        if (i === 0) return getColor('color-pass');
+        // Pair 2k and 2k+1 → same color
+        const pairIdx = Math.floor((i - 1) / 2);
+        return pairIdx % 2 === 0 ? getColor('color-info') : getColor('color-high');
+      })
+      .attr('opacity', 0.85);
+    bars.exit().remove();
+
+    // Value labels
+    const labels = g.selectAll('text.bar-label').data(Vs);
+    labels.enter().append('text').attr('class', 'bar-label')
+      .merge(labels)
+      .attr('x', (d, i) => x(i + 1) + x.bandwidth() / 2)
+      .attr('y', d => d >= 0 ? y(d) - 4 : y(d) + 14)
+      .attr('text-anchor', 'middle').style('font-size', '11px').style('font-weight', '600')
+      .text(d => d);
+    labels.exit().remove();
+
+    // Tie indicators
+    g.selectAll('.tie-line').remove();
+    for (let k = 1; 2 * k + 1 <= m; k++) {
+      const i1 = 2 * k - 1; // p=2k → index 2k-1
+      const i2 = 2 * k;     // p=2k+1 → index 2k
+      g.append('line').attr('class', 'tie-line')
+        .attr('x1', x(i1 + 1) + x.bandwidth() * 0.7)
+        .attr('x2', x(i2 + 1) + x.bandwidth() * 0.3)
+        .attr('y1', y(Vs[i1]) - 12).attr('y2', y(Vs[i2]) - 12)
+        .attr('stroke', getColor('color-critical')).attr('stroke-width', 2)
+        .attr('stroke-dasharray', '3,2');
+      g.append('text').attr('class', 'tie-line')
+        .attr('x', (x(i1 + 1) + x(i2 + 1) + x.bandwidth()) / 2)
+        .attr('y', y(Vs[i1]) - 16)
+        .attr('text-anchor', 'middle').style('font-size', '10px').style('font-weight', '700')
+        .style('fill', getColor('color-critical')).text('=');
+    }
+  }
+  slider.addEventListener('input', e => update(+e.target.value));
+  update(+slider.value);
+});
+
+// === IntersectionObserver lazy mount ===
+function observeAllCharts() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        const chart = chartRegistry[id];
+        if (chart && !chart.mounted) {
+          chart.mount(entry.target);
+          chart.mounted = true;
+        }
+      }
+    });
+  }, { rootMargin: '100px' });
+  document.querySelectorAll('.chart-container').forEach(el => {
+    if (el.id) observer.observe(el);
+  });
+}
+
+window.addEventListener('resize', () => {
+  // Debounced redraw: re-mount on significant size changes
+  clearTimeout(window._chartResizeTimer);
+  window._chartResizeTimer = setTimeout(() => {
+    document.querySelectorAll('.chart-container').forEach(el => {
+      const chart = chartRegistry[el.id];
+      if (chart && chart.mounted) {
+        const canvas = el.querySelector('.chart-canvas');
+        if (canvas) canvas.innerHTML = '';
+        chart.mount(el);
+      }
+    });
+  }, 200);
+});
+
+// === AEO Share Buttons ===
+document.querySelectorAll('.theorem-section h2').forEach(h2 => {
+  if (h2.querySelector('.share-ai-btn')) return;
+
+  const section = h2.closest('.theorem-section');
+  const id = section.id;
+  if (!id) return;
+
+  if (!h2.dataset.heading) {
+    h2.dataset.heading = h2.textContent.trim();
+  }
+
+  const clone = section.cloneNode(true);
+  clone.querySelectorAll('.chart-container, .share-ai-btn, script, style').forEach(el => el.remove());
+  const fullText = clone.textContent.replace(/\s+/g, ' ').trim().slice(0, 1500);
+
+  const btn = document.createElement('button');
+  btn.className = 'share-ai-btn';
+  btn.type = 'button';
+  btn.textContent = '複製到 AI';
+  btn.title = '複製此段完整內容與連結，可貼到 ChatGPT 或 Claude 接續討論';
+  btn.setAttribute('aria-label', '複製此段摘要與連結到剪貼簿');
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const url = `${location.origin}${location.pathname}#${id}`;
+    const heading = h2.dataset.heading;
+    const payload =
+      `我正在閱讀以下這段：\n\n` +
+      `## ${heading}\n\n` +
+      `${fullText}\n\n` +
+      `---\n` +
+      `完整內容：${url}\n\n` +
+      `請扮演這篇論文的共同作者，依高中生能懂的語言（最多一個符號且立刻白話化）` +
+      `和我討論這段，必要時可延伸到相關概念。`;
+
+    navigator.clipboard.writeText(payload).then(() => {
+      btn.textContent = '已複製';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '複製到 AI'; btn.classList.remove('copied'); }, 2000);
+    }).catch(() => {
+      btn.textContent = '複製失敗';
+      setTimeout(() => { btn.textContent = '複製到 AI'; }, 2000);
+    });
+  });
+  h2.appendChild(btn);
+});
+
+// === Boot ===
+observeAllCharts();
+</script>
+</body>
+</html>

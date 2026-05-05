@@ -1,0 +1,28 @@
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Editor temp files
+*.swp
+*.bak
+*~
+.DS_Store
+
+# Local development server logs / temp review inputs
+.tmp-*.md
+*.log
+
+# LaTeX build artifacts
+paper-*/*.aux
+paper-*/*.out
+paper-*/*.fls
+paper-*/*.fdb_latexmk
+paper-*/*.synctex.gz
+
+# Internal research records (deep-proof 工作日誌；不公開)
+attack-spec.md
+formalization.md
+decisions.md
+exploration/
+gap-attacks/
+reviews/
