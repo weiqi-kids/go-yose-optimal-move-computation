@@ -118,7 +118,7 @@ proof.md          # 完整證明（1091 行）
 math-solution.md  # 純函數合成
 algorithm.md      # 含 pseudocode 之算法
 practical.md      # 一頁 cheatsheet
-README.md         # 本文件
+readme.md         # 本文件
 ```
 
 ### 內部研究紀錄
@@ -149,7 +149,7 @@ reviews/        # Phase 5 四輪審查（round-1~4 review + fixes）
 | 純數學公式（函數合成）| `math-solution.md` |
 | 完整算法（含 pseudocode）| `algorithm.md` |
 | 完整證明（含 PSPACE-hardness）| `proof.md` |
-| 工具用法（本文）| `README.md` |
+| 工具用法（本文）| `readme.md` |
 | Python 程式碼 | `tool.py` + `demo.py` |
 | JavaScript 程式碼 | `tool.mjs` + `demo.mjs` |
 | Web 互動 demo | `index.html`（直接開啟）|
