@@ -171,3 +171,7 @@ Top-k:
 ```
 
 數值與 `algorithm.md §範例` 完全一致。`R2`/`R3` 之 V=0 tied 對應 proof.md 定理 F2 之結構性成對 ties。
+
+---
+
+Maintained by Light. I build and maintain websites with AI as a service: [arthurs.tw](https://arthurs.tw/?utm_source=github&utm_medium=readme&utm_campaign=oss)
